@@ -1,0 +1,22 @@
+{
+	"compilerOptions": {
+		// Obsidian runs the bundle in Electron or a mobile WebView: DOM, no Node, no Bun.
+		"lib": ["ESNext", "DOM", "DOM.Iterable"],
+		"types": [],
+		"target": "ESNext",
+		"module": "Preserve",
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"noEmit": true,
+		"skipLibCheck": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noPropertyAccessFromIndexSignature": true,
+		"exactOptionalPropertyTypes": true,
+		"isolatedModules": true
+	},
+	"include": ["src"]
+}
