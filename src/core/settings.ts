@@ -5,6 +5,8 @@ export interface Settings {
 	readonly owner: string;
 	/** Also names the wiki's vault folder. */
 	readonly wikiSlug: string;
+	/** The handle or DID last used to sign in. */
+	readonly account: string;
 }
 
 export function parseSettings(data: unknown): Settings {
@@ -12,5 +14,6 @@ export function parseSettings(data: unknown): Settings {
 	return {
 		owner: stringField(raw, "owner"),
 		wikiSlug: stringField(raw, "wikiSlug"),
+		account: stringField(raw, "account"),
 	};
 }

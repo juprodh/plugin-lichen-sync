@@ -5,5 +5,5 @@
 	"minAppVersion": "1.13.0",
 	"description": "Sync the notes of your Lichen wikis with a vault folder.",
 	"author": "juprodh.me",
-	"isDesktopOnly": false
+	"isDesktopOnly": true
 }

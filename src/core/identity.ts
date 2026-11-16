@@ -10,7 +10,7 @@ import { formatAtUri } from "@lichen/client/at-uri";
 import { COLLECTIONS } from "@lichen/client/collections";
 
 // Answers with CORS headers, which a handle's own /.well-known/atproto-did often lacks.
-const HANDLE_RESOLVER = "https://public.api.bsky.app";
+export const HANDLE_RESOLVER = "https://public.api.bsky.app";
 
 /** The wiki's at-uri, from its owner's handle or DID as typed in settings: "@" and whitespace allowed. */
 export async function resolveWiki(

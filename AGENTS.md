@@ -17,7 +17,7 @@ bun scripts/devtools.ts eval|screenshot|logs         # drive that Obsidian
 
 `@lichen/client` is `file:../lichen-repo/packages/client`, so it builds against whatever change `lichen-repo` has checked out. Bun copies it into `node_modules` rather than linking it: reinstall after changing it.
 
-`scripts/obsidian.sh` runs the Obsidian the flake pins, updates off, on a virtual display, with DevTools on `127.0.0.1:9222`. Its test vault and Obsidian profile are in `~/.local/state/lichen-sync-dev/` (`LICHEN_SYNC_DEV_DIR`), apart from your own vaults. `bun run dev` builds `main.js` into the vault's plugin folder and Hot Reload reloads it. To see and click the window from another machine, forward the port (`ssh -L 9222:127.0.0.1:9222 <host>`) and inspect it from `chrome://inspect`.
+`scripts/obsidian.sh` runs the Obsidian the flake pins, updates off, on a virtual display, with DevTools on `127.0.0.1:9222`. Its test vault and Obsidian profile are in `~/.local/state/lichen-sync-dev/` (`LICHEN_SYNC_DEV_DIR`), apart from your own vaults. `bun run dev` builds `main.js` into the vault's plugin folder and Hot Reload reloads it. To see and click the window from another machine, forward the port (`ssh -L 9222:127.0.0.1:9222 <host>`) and inspect it from `chrome://inspect`. Sign-in redirects to `127.0.0.1:52741`, so forward that port too and open the URL `scripts/obsidian.sh` logs for it (`bun scripts/devtools.ts logs`) in your own browser.
 
 ## Layout
 

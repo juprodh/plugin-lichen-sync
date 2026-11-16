@@ -30,9 +30,15 @@ bun run dev --outfile "$plugins/lichen-sync/main.js" &
 dev_pid=$!
 
 # A first launch asks whether to trust the vault's plugins; this vault is ours.
+# Every URL the app opens is logged too: the virtual display has no browser to open it in.
 (
 	until bun scripts/devtools.ts eval 1 >/dev/null 2>&1; do sleep 1; done
 	bun scripts/devtools.ts eval '
+		const open = window.open;
+		window.open = (url, ...rest) => {
+			console.info(`window.open ${url}`);
+			return open.call(window, url, ...rest);
+		};
 		for (let i = 0; i < 60 && !window.app?.plugins?.isEnabled(); i++) {
 			const trust = [...document.querySelectorAll(".modal button")]
 				.find((b) => b.textContent.startsWith("Trust"));

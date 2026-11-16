@@ -1,8 +1,10 @@
+import type { Did } from "@atcute/lexicons/syntax";
 import { isValidWikiSlug } from "@lichen/client/slug";
 import {
 	type App,
 	type Plugin,
 	PluginSettingTab,
+	type Setting,
 	type SettingDefinitionItem,
 } from "obsidian";
 import type { Settings } from "../core/settings.ts";
@@ -12,9 +14,14 @@ import type { Settings } from "../core/settings.ts";
 interface SettingsStore {
 	get(): Settings;
 	save(settings: Settings): Promise<void>;
+	signedIn(): Did | undefined;
+	signIn(account: string): Promise<void>;
+	signOut(): Promise<void>;
 }
 
-function isSettingsKey(key: string): key is keyof Settings {
+type ControlKey = "owner" | "wikiSlug";
+
+function isControlKey(key: string): key is ControlKey {
 	return key === "owner" || key === "wikiSlug";
 }
 
@@ -27,7 +34,7 @@ export class SettingsTab extends PluginSettingTab {
 		super(app, plugin);
 	}
 
-	override getSettingDefinitions(): SettingDefinitionItem<keyof Settings>[] {
+	override getSettingDefinitions(): SettingDefinitionItem<ControlKey>[] {
 		return [
 			{
 				name: "Owner",
@@ -50,15 +57,55 @@ export class SettingsTab extends PluginSettingTab {
 							: "Lowercase letters, digits and hyphens only.",
 				},
 			},
+			{
+				name: "Account",
+				render: (setting) => this.renderAccount(setting),
+			},
 		];
 	}
 
+	private renderAccount(setting: Setting): void {
+		const did = this.store.signedIn();
+		if (did) {
+			setting
+				.setDesc(`Signed in as ${this.store.get().account} (${did}).`)
+				.addButton((button) =>
+					button.setButtonText("Sign out").onClick(async () => {
+						await this.store.signOut();
+						this.update();
+					}),
+				);
+			return;
+		}
+		let account = this.store.get().account;
+		setting
+			.setDesc("Your handle, to push edits. Signing in opens your browser.")
+			.addText((text) =>
+				text
+					.setPlaceholder("alice.bsky.social")
+					.setValue(account)
+					.onChange((value) => {
+						account = value;
+					}),
+			)
+			.addButton((button) =>
+				button
+					.setButtonText("Sign in")
+					.setCta()
+					.onClick(async () => {
+						button.setDisabled(true);
+						await this.store.signIn(account);
+						this.update();
+					}),
+			);
+	}
+
 	override getControlValue(key: string): unknown {
-		return isSettingsKey(key) ? this.store.get()[key] : undefined;
+		return isControlKey(key) ? this.store.get()[key] : undefined;
 	}
 
 	override async setControlValue(key: string, value: unknown): Promise<void> {
-		if (!isSettingsKey(key) || typeof value !== "string") return;
+		if (!isControlKey(key) || typeof value !== "string") return;
 		await this.store.save({ ...this.store.get(), [key]: value });
 	}
 }
