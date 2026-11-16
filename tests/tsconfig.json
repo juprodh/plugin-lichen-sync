@@ -1,7 +1,9 @@
 {
 	"extends": "../tsconfig.json",
 	"compilerOptions": {
-		"types": ["@types/bun"]
+		"types": ["@types/bun"],
+		// Bun runs every file as a module, imports or not.
+		"moduleDetection": "force"
 	},
 	"include": [".", "../*.ts", "../scripts"]
 }

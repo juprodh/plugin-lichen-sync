@@ -10,11 +10,14 @@ bun run lint:fix && bun run typecheck && bun run knip && bun test
 bun run build             # main.js, minified
 bun run dev               # main.js, rebuilt on change
 bun scripts/pull.ts <owner> <wiki> <dir>   # pull a public wiki into a folder, as the plugin does into a vault
+
+nix develop path:.#obsidian -c scripts/obsidian.sh   # the plugin in a test Obsidian, headless
+bun scripts/devtools.ts eval|screenshot|logs         # drive that Obsidian
 ```
 
 `@lichen/client` is `file:../lichen-repo/packages/client`, so it builds against whatever change `lichen-repo` has checked out. Bun copies it into `node_modules` rather than linking it: reinstall after changing it.
 
-To run it in Obsidian, link the repo into a test vault's plugins folder, `ln -s "$PWD" <vault>/.obsidian/plugins/lichen-sync`, and install the community Hot Reload plugin, which reloads it when `bun run dev` rebuilds `main.js`.
+`scripts/obsidian.sh` runs the Obsidian the flake pins, updates off, on a virtual display, with DevTools on `127.0.0.1:9222`. Its test vault and Obsidian profile are in `~/.local/state/lichen-sync-dev/` (`LICHEN_SYNC_DEV_DIR`), apart from your own vaults. `bun run dev` builds `main.js` into the vault's plugin folder and Hot Reload reloads it. To see and click the window from another machine, forward the port (`ssh -L 9222:127.0.0.1:9222 <host>`) and inspect it from `chrome://inspect`.
 
 ## Layout
 
