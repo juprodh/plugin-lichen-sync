@@ -9,6 +9,8 @@ import {
 	WikiLichenGetNote,
 	WikiLichenGetWiki,
 	WikiLichenListNotes,
+	WikiLichenListWikis,
+	WikiLichenSearchWikis,
 } from "@lichen/client/lexicons/index";
 
 const LICHEN_APPVIEW = "https://lichen.wiki";
@@ -30,6 +32,38 @@ export async function canWrite(
 		appview.call(WikiLichenGetWiki, { params: { uri: wiki, viewer } }),
 	);
 	return view.viewer?.canWrite === true;
+}
+
+/** Null when Lichen has no such public wiki. */
+export async function getWiki(appview: Client, uri: ResourceUri, viewer?: Did) {
+	try {
+		return await ok(
+			appview.call(WikiLichenGetWiki, {
+				params: { uri, ...(viewer ? { viewer } : {}) },
+			}),
+		);
+	} catch (err) {
+		if (err instanceof ClientResponseError && err.error === "NotFound") {
+			return null;
+		}
+		throw err;
+	}
+}
+
+/** Every wiki the DID holds a role on, its own and others'. */
+export async function listWikis(appview: Client, did: Did) {
+	const { wikis } = await ok(
+		appview.call(WikiLichenListWikis, { params: { did } }),
+	);
+	return wikis;
+}
+
+/** Public wikis by name, slug, owner handle and description; the most recently updated when `q` is empty. */
+export async function searchWikis(appview: Client, q: string, limit: number) {
+	const { wikis } = await ok(
+		appview.call(WikiLichenSearchWikis, { params: { q, limit } }),
+	);
+	return wikis;
 }
 
 export async function* listNotes(appview: Client, wiki: ResourceUri) {

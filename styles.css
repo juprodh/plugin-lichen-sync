@@ -1,0 +1,19 @@
+.lichen-sync-suggestion {
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+.lichen-sync-avatar {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.lichen-sync-account-avatar {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	vertical-align: middle;
+	margin-inline-end: var(--size-4-2);
+}

@@ -1,4 +1,5 @@
 import { asRecord, stringField } from "./json.ts";
+import { isWithin } from "./settings.ts";
 
 /** What the last sync left for one note, to tell a remote change from a local one. */
 export interface SyncedNote {
@@ -31,6 +32,21 @@ export function renameSyncedPath(
 	if (!entry) return state;
 	const [uri, note] = entry;
 	return { ...state, [uri]: { ...note, path: to } };
+}
+
+/** The state with every note synced at or under `from` moved to `to`. */
+export function moveSyncedFolder(
+	state: WikiState,
+	from: string,
+	to: string,
+): WikiState {
+	const moved: Record<string, SyncedNote> = {};
+	for (const [uri, note] of Object.entries(state)) {
+		moved[uri] = isWithin(note.path, from)
+			? { ...note, path: to + note.path.slice(from.length) }
+			: note;
+	}
+	return moved;
 }
 
 // An entry missing a field cannot be trusted to guard a local edit, so it is dropped.

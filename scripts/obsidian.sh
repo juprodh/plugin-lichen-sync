@@ -13,7 +13,7 @@ port=${DEVTOOLS_PORT:-9222}
 plugins=$vault/.obsidian/plugins
 mkdir -p "$plugins/hot-reload" "$plugins/lichen-sync" "$dev_dir/config/obsidian"
 install -m 644 "$HOT_RELOAD_PLUGIN"/{main.js,manifest.json} "$plugins/hot-reload/"
-install -m 644 "$repo/manifest.json" "$plugins/lichen-sync/"
+install -m 644 "$repo"/{manifest.json,styles.css} "$plugins/lichen-sync/"
 touch "$plugins/lichen-sync/.hotreload"
 echo '["hot-reload","lichen-sync"]' >"$vault/.obsidian/community-plugins.json"
 
