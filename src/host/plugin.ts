@@ -53,6 +53,7 @@ export class LichenSyncPlugin extends Plugin {
 				removeWiki: (uri) => this.removeWiki(uri),
 				moveWiki: (uri, folder) => this.moveWiki(uri, folder),
 				syncWiki: (uri) => this.sync([uri]),
+				syncing: () => this.syncing,
 			}),
 		);
 		this.addCommand({
@@ -327,7 +328,7 @@ export class LichenSyncPlugin extends Plugin {
 			return new Client({ handler: await this.oauth.restore(did) });
 		} catch (err) {
 			new Notice(
-				`Lichen Sync: sign in again to push your edits. ${reasonOf(err)}`,
+				`Lichen Sync: sign in again to send your edits. ${reasonOf(err)}`,
 			);
 			return null;
 		}

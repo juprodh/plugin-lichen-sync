@@ -10,12 +10,34 @@
 	flex-shrink: 0;
 }
 
-.lichen-sync-account-avatar {
-	width: 20px;
-	height: 20px;
-	border-radius: 50%;
-	vertical-align: middle;
-	margin-inline-end: var(--size-4-2);
+.lichen-sync-account {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-3);
+}
+
+.lichen-sync-account .lichen-sync-avatar {
+	width: 32px;
+	height: 32px;
+}
+
+.lichen-sync-account,
+.lichen-sync-wikis .setting-item-name {
+	font-size: var(--font-ui-medium);
+}
+
+.lichen-sync-wikis .setting-item.mod-navigable {
+	padding: var(--size-4-4) var(--size-4-5);
+}
+
+.lichen-sync-danger .setting-item-name {
+	color: var(--text-error);
+}
+
+:is(.lichen-sync-account-group, .lichen-sync-wikis)
+	.setting-item-heading
+	.setting-item-name {
+	font-size: var(--font-ui-large);
 }
 
 .lichen-sync-syncing svg {

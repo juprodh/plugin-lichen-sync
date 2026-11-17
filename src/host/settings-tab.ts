@@ -34,6 +34,7 @@ interface SettingsHost {
 	removeWiki(uri: ResourceUri): Promise<void>;
 	moveWiki(uri: ResourceUri, folder: string): Promise<void>;
 	syncWiki(uri: ResourceUri): Promise<void>;
+	syncing(): boolean;
 }
 
 export class SettingsTab extends PluginSettingTab {
@@ -51,6 +52,7 @@ export class SettingsTab extends PluginSettingTab {
 			{
 				type: "group",
 				heading: "Account",
+				cls: "lichen-sync-account-group",
 				items: [
 					{ name: "Account", render: (setting) => this.renderAccount(setting) },
 				],
@@ -58,7 +60,8 @@ export class SettingsTab extends PluginSettingTab {
 			{
 				type: "list",
 				heading: "Wikis",
-				emptyState: "No wikis yet. Add one to pull its notes into a folder.",
+				cls: "lichen-sync-wikis",
+				emptyState: "No wikis yet. Add one to sync its notes into a folder.",
 				addItem: { name: "Add wiki", action: () => this.addWiki() },
 				items: wikis.map((wiki) => this.wikiPage(wiki)),
 			},
@@ -68,26 +71,24 @@ export class SettingsTab extends PluginSettingTab {
 	private renderAccount(setting: Setting): void {
 		const did = this.host.signedIn();
 		if (did) {
+			const { account } = this.host.settings();
 			setting
-				.setName(this.host.settings().account)
-				.setDesc("Signed in, so you can push to the wikis you write in.")
+				.setName(account.startsWith("did:") ? account : `@${account}`)
 				.addButton((button) =>
 					button.setButtonText("Sign out").onClick(async () => {
 						await this.host.signOut();
 						this.update();
 					}),
 				);
+			setting.nameEl.addClass("lichen-sync-account");
 			void getProfile(did)
 				.then((profile) => {
 					if (!profile) return;
-					setting.setName(profile.displayName ?? `@${profile.handle}`);
-					if (profile.displayName) {
-						setting.setDesc(`@${profile.handle} · signed in`);
-					}
+					setting.setName(`@${profile.handle}`);
 					if (profile.avatar) {
 						setting.nameEl.prepend(
 							createEl("img", {
-								cls: "lichen-sync-account-avatar",
+								cls: "lichen-sync-avatar",
 								attr: { src: profile.avatar, alt: "" },
 							}),
 						);
@@ -100,7 +101,7 @@ export class SettingsTab extends PluginSettingTab {
 		setting
 			.setName("Sign in")
 			.setDesc(
-				"Only to push your edits. Pulling a public wiki needs no account.",
+				"Only to send your edits. Syncing a public wiki needs no account.",
 			)
 			.addText((text) => {
 				text
@@ -127,69 +128,76 @@ export class SettingsTab extends PluginSettingTab {
 
 	private wikiPage(wiki: SyncedWiki): SettingDefinitionPage {
 		const url = `https://lichen.wiki/${wikiRef(wiki)}`;
+		const value = (text: () => string) => (setting: Setting) => {
+			setting.addDisplayValue((display) => display.setValue(text()));
+		};
 		return {
 			type: "page",
 			name: wiki.name || wikiSlug(wiki),
-			desc: `${wikiRef(wiki)} → ${wiki.folder}`,
 			displayValue: () => syncedLabel(this.current(wiki)),
 			items: [
 				{
-					name: "Folder",
-					render: (setting) =>
-						setting
-							.setDesc(this.current(wiki).folder)
-							.addButton((button) =>
-								button
-									.setButtonText("Move…")
-									.onClick(() => this.moveWiki(wiki.uri)),
-							),
+					type: "group",
+					items: [
+						{ name: "Folder", render: value(() => this.current(wiki).folder) },
+						{
+							name: "Access",
+							render: (setting) => this.renderAccess(setting, wiki),
+						},
+						{
+							name: "Last sync",
+							render: value(() => lastSyncLabel(this.current(wiki))),
+						},
+						{
+							name: "On lichen.wiki",
+							render: (setting) => {
+								setting.addDisplayValue(({ valueEl }) => {
+									const link = valueEl.createEl("a", {
+										text: wikiRef(wiki),
+										href: url,
+									});
+									link.onclick = (event) => {
+										event.preventDefault();
+										window.open(url);
+									};
+								});
+							},
+						},
+					],
 				},
 				{
-					name: "Access",
-					render: (setting) => this.renderAccess(setting, wiki),
+					type: "group",
+					heading: "Actions",
+					items: [
+						{
+							name: "Sync now",
+							disabled: () => this.host.syncing(),
+							action: async () => {
+								const sync = this.host.syncWiki(wiki.uri);
+								this.update();
+								await sync;
+								this.update();
+							},
+						},
+						{ name: "Move folder…", action: () => this.moveWiki(wiki.uri) },
+					],
 				},
 				{
-					name: "Last sync",
-					render: (setting) =>
-						setting
-							.setDesc(syncedLabel(this.current(wiki)))
-							.addButton((button) =>
-								button.setButtonText("Sync now").onClick(async () => {
-									button.setDisabled(true);
-									await this.host.syncWiki(wiki.uri);
-									this.update();
-								}),
-							),
-				},
-				{
-					name: "On lichen.wiki",
-					render: (setting) =>
-						setting
-							.setDesc(url)
-							.addButton((button) =>
-								button.setButtonText("Open").onClick(() => window.open(url)),
-							),
-				},
-				{
-					name: "Stop syncing",
-					render: (setting) =>
-						setting
-							.setDesc(
-								`Forgets this wiki. The folder ${wiki.folder} and its files stay.`,
-							)
-							.addButton((button) =>
-								button
-									.setButtonText("Stop syncing")
-									.setWarning()
-									.onClick(async () => {
-										// The page would stay open on a wiki that is gone; Obsidian has no API to leave it.
-										button.buttonEl
-											.closest(".setting-page")
-											?.querySelector<HTMLElement>(".setting-page-back-button")
-											?.click();
-										await this.stopSyncing(wiki);
-									}),
-							),
+					type: "group",
+					cls: "lichen-sync-danger",
+					items: [
+						{
+							name: "Stop syncing",
+							desc: `Forgets this wiki. The folder ${wiki.folder} and its files stay.`,
+							action: async (el) => {
+								// The page would stay open on a wiki that is gone; Obsidian has no API to leave it.
+								el.closest(".setting-page")
+									?.querySelector<HTMLElement>(".setting-page-back-button")
+									?.click();
+								await this.stopSyncing(this.current(wiki));
+							},
+						},
+					],
 				},
 			],
 		};
@@ -197,22 +205,24 @@ export class SettingsTab extends PluginSettingTab {
 
 	private renderAccess(setting: Setting, wiki: SyncedWiki): void {
 		const account = this.host.signedIn();
-		setting.setDesc("Checking…");
-		getWiki(this.host.appview, wiki.uri, account)
-			.then((view) => {
-				if (!view) {
-					setting.setDesc("lichen.wiki no longer lists this wiki.");
-				} else if (!account) {
-					setting.setDesc("Pull only. Sign in as a contributor to push.");
-				} else if (view.viewer?.canWrite) {
-					setting.setDesc(
-						`${capitalize(view.viewer.role ?? "member")}: you can push.`,
-					);
-				} else {
-					setting.setDesc("Pull only: you are not a contributor.");
-				}
-			})
-			.catch(() => setting.setDesc("Could not reach lichen.wiki."));
+		setting.addDisplayValue((display) => {
+			display.setValue("Checking…");
+			getWiki(this.host.appview, wiki.uri, account)
+				.then((view) => {
+					if (!view) {
+						display.setValue("No longer on lichen.wiki");
+					} else if (view.viewer?.canWrite) {
+						display.setValue(
+							`Can edit · ${capitalize(view.viewer.role ?? "member")}`,
+						);
+					} else {
+						display.setValue(
+							account ? "Read only" : "Read only · Sign in to edit",
+						);
+					}
+				})
+				.catch(() => display.setValue("Could not reach lichen.wiki"));
+		});
 	}
 
 	private addWiki(): void {
@@ -290,6 +300,12 @@ function clashProblem(clash: SyncedWiki | undefined): string | null {
 	return clash
 		? `${clash.folder} already syncs ${clash.name || wikiRef(clash)}; wiki folders cannot nest.`
 		: null;
+}
+
+function lastSyncLabel(wiki: SyncedWiki): string {
+	return wiki.pulledAt
+		? capitalize(timeAgo(Date.parse(wiki.pulledAt)))
+		: "Never";
 }
 
 function syncedLabel(wiki: SyncedWiki): string {
