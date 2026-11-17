@@ -2,3 +2,5 @@ node_modules
 .direnv/
 main.js
 /data.json
+# jj run's checkouts, which biome and knip would scan
+/.jj/
