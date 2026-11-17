@@ -33,7 +33,7 @@ interface SettingsHost {
 	addWiki(wiki: WikiChoice, folder: string): Promise<void>;
 	removeWiki(uri: ResourceUri): Promise<void>;
 	moveWiki(uri: ResourceUri, folder: string): Promise<void>;
-	pullWiki(uri: ResourceUri): Promise<void>;
+	syncWiki(uri: ResourceUri): Promise<void>;
 }
 
 export class SettingsTab extends PluginSettingTab {
@@ -131,7 +131,7 @@ export class SettingsTab extends PluginSettingTab {
 			type: "page",
 			name: wiki.name || wikiSlug(wiki),
 			desc: `${wikiRef(wiki)} → ${wiki.folder}`,
-			displayValue: () => pulledLabel(this.current(wiki)),
+			displayValue: () => syncedLabel(this.current(wiki)),
 			items: [
 				{
 					name: "Folder",
@@ -149,14 +149,14 @@ export class SettingsTab extends PluginSettingTab {
 					render: (setting) => this.renderAccess(setting, wiki),
 				},
 				{
-					name: "Last pull",
+					name: "Last sync",
 					render: (setting) =>
 						setting
-							.setDesc(pulledLabel(this.current(wiki)))
+							.setDesc(syncedLabel(this.current(wiki)))
 							.addButton((button) =>
-								button.setButtonText("Pull now").onClick(async () => {
+								button.setButtonText("Sync now").onClick(async () => {
 									button.setDisabled(true);
-									await this.host.pullWiki(wiki.uri);
+									await this.host.syncWiki(wiki.uri);
 									this.update();
 								}),
 							),
@@ -292,10 +292,10 @@ function clashProblem(clash: SyncedWiki | undefined): string | null {
 		: null;
 }
 
-function pulledLabel(wiki: SyncedWiki): string {
+function syncedLabel(wiki: SyncedWiki): string {
 	return wiki.pulledAt
-		? `Pulled ${timeAgo(Date.parse(wiki.pulledAt))}`
-		: "Not pulled yet";
+		? `Synced ${timeAgo(Date.parse(wiki.pulledAt))}`
+		: "Not synced yet";
 }
 
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [

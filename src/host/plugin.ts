@@ -1,9 +1,16 @@
-import { isActorIdentifier, type ResourceUri } from "@atcute/lexicons/syntax";
+import { Client } from "@atcute/client";
+import {
+	type Did,
+	isActorIdentifier,
+	type ResourceUri,
+} from "@atcute/lexicons/syntax";
 import { Notice, Platform, Plugin, TFile, TFolder } from "obsidian";
-import { lichenAppview } from "../core/appview.ts";
+import { canWrite, lichenAppview } from "../core/appview.ts";
 import { lichenOAuth, signedInDid } from "../core/oauth.ts";
 import { type PluginData, parsePluginData } from "../core/plugin-data.ts";
-import { type PullReport, pullWiki } from "../core/pull.ts";
+import { pullWiki } from "../core/pull.ts";
+import { type PushReport, pushWiki } from "../core/push.ts";
+import { describeSync } from "../core/report.ts";
 import {
 	followFolderRename,
 	type Settings,
@@ -22,7 +29,7 @@ import { hostVault } from "./vault.ts";
 
 export class LichenSyncPlugin extends Plugin {
 	private data: PluginData = parsePluginData(undefined);
-	private pulling = false;
+	private syncing = false;
 	private signInListener: CallbackListener | null = null;
 	private readonly appview = lichenAppview();
 	private readonly oauth = lichenOAuth({
@@ -43,14 +50,14 @@ export class LichenSyncPlugin extends Plugin {
 				addWiki: (wiki, folder) => this.addWiki(wiki, folder),
 				removeWiki: (uri) => this.removeWiki(uri),
 				moveWiki: (uri, folder) => this.moveWiki(uri, folder),
-				pullWiki: (uri) => this.pull([uri]),
+				syncWiki: (uri) => this.sync([uri]),
 			}),
 		);
 		this.addCommand({
-			id: "pull",
-			name: "Pull all wikis",
+			id: "sync",
+			name: "Sync all wikis",
 			callback: () =>
-				this.pull(this.data.settings.wikis.map((wiki) => wiki.uri)),
+				this.sync(this.data.settings.wikis.map((wiki) => wiki.uri)),
 		});
 		this.registerEvent(
 			this.app.vault.on("rename", (file, oldPath) => {
@@ -100,7 +107,7 @@ export class LichenSyncPlugin extends Plugin {
 		await this.saveSettings({
 			wikis: [...this.data.settings.wikis, wiki],
 		});
-		await this.pull([wiki.uri]);
+		await this.sync([wiki.uri]);
 	}
 
 	// The files stay: they are the user's notes as much as the wiki's.
@@ -197,71 +204,99 @@ export class LichenSyncPlugin extends Plugin {
 		}
 	}
 
-	private async pull(uris: readonly ResourceUri[]): Promise<void> {
+	private async sync(uris: readonly ResourceUri[]): Promise<void> {
 		if (uris.length === 0) {
 			new Notice("Lichen Sync: add a wiki in settings first.");
 			return;
 		}
-		if (this.pulling) return;
-		this.pulling = true;
+		if (this.syncing) return;
+		this.syncing = true;
+		let pds: Promise<Client | null> | undefined;
+		// Restored once a wiki takes a push, so a sync of pull-only wikis refreshes no token.
+		const author = (did: Did) => {
+			pds ??= this.restorePds(did);
+			return pds;
+		};
 		try {
-			for (const uri of uris) await this.pullOne(uri);
+			for (const uri of uris) await this.syncOne(uri, author);
 		} finally {
-			this.pulling = false;
+			this.syncing = false;
 		}
 	}
 
-	private async pullOne(uri: ResourceUri): Promise<void> {
+	private async syncOne(
+		uri: ResourceUri,
+		author: (did: Did) => Promise<Client | null>,
+	): Promise<void> {
 		const wiki = this.data.settings.wikis.find((w) => w.uri === uri);
 		if (!wiki) return;
 		const label = wiki.name || wikiRef(wiki);
 		try {
-			const { state, report } = await pullWiki(
+			const pulled = await pullWiki(
 				this.appview,
 				hostVault(this.app),
 				uri,
 				wiki.folder,
 				this.data.sync[uri] ?? {},
 			);
-			const pulledAt = new Date().toISOString();
-			await this.save({
-				...this.data,
-				settings: {
-					...this.data.settings,
-					wikis: this.data.settings.wikis.map((w) =>
-						w.uri === uri ? { ...w, pulledAt } : w,
-					),
-				},
-				sync: { ...this.data.sync, [uri]: state },
-			});
-			new Notice(describePull(label, report));
+			await this.saveSync(uri, pulled.state, new Date().toISOString());
+			let pushed: PushReport | null = null;
+			const did = signedInDid(this.data.sessions);
+			const pds =
+				did && (await canWrite(this.appview, uri, did))
+					? await author(did)
+					: null;
+			if (did && pds) {
+				const result = await pushWiki(
+					this.appview,
+					pds,
+					did,
+					hostVault(this.app),
+					uri,
+					wiki.folder,
+					pulled.state,
+				);
+				await this.saveSync(uri, result.state);
+				pushed = result.report;
+			}
+			new Notice(describeSync(label, pulled.report, pushed));
 		} catch (err) {
-			new Notice(`Lichen Sync: pulling ${label} failed. ${reasonOf(err)}`);
+			new Notice(`Lichen Sync: syncing ${label} failed. ${reasonOf(err)}`);
 		}
+	}
+
+	// A lapsed session still lets every wiki pull.
+	private async restorePds(did: Did): Promise<Client | null> {
+		try {
+			return new Client({ handler: await this.oauth.restore(did) });
+		} catch (err) {
+			new Notice(
+				`Lichen Sync: sign in again to push your edits. ${reasonOf(err)}`,
+			);
+			return null;
+		}
+	}
+
+	private async saveSync(
+		uri: ResourceUri,
+		state: SyncState[string],
+		pulledAt?: string,
+	): Promise<void> {
+		await this.save({
+			...this.data,
+			settings: pulledAt
+				? {
+						...this.data.settings,
+						wikis: this.data.settings.wikis.map((w) =>
+							w.uri === uri ? { ...w, pulledAt } : w,
+						),
+					}
+				: this.data.settings,
+			sync: { ...this.data.sync, [uri]: state },
+		});
 	}
 }
 
 function reasonOf(err: unknown): string {
 	return err instanceof Error ? err.message : String(err);
-}
-
-function describePull(label: string, report: PullReport): string {
-	const { written, merged, conflictCopies, recoveredCopies, gone } = report;
-	const lines = [
-		`Lichen Sync: ${label}, ${written.length + merged.length} note(s) updated.`,
-	];
-	if (conflictCopies.length > 0) {
-		lines.push(
-			`Edited here and on lichen.wiki; your version is in: ${conflictCopies.join(", ")}`,
-		);
-	}
-	if (recoveredCopies.length > 0) {
-		lines.push(
-			`Found without sync state; the earlier text is in: ${recoveredCopies.join(", ")}`,
-		);
-	}
-	if (gone.length > 0) {
-		lines.push(`No longer on lichen.wiki, left as is: ${gone.join(", ")}`);
-	}
-	return lines.join("\n");
 }

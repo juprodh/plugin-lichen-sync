@@ -49,7 +49,7 @@ async function waitForHead(
 	return "timeout";
 }
 
-interface PushReport {
+export interface PushReport {
 	readonly pushed: readonly string[];
 	readonly created: readonly string[];
 	/** Their note moved since the last sync: a pull merges them first. */
@@ -83,7 +83,6 @@ interface PushRun {
 /**
  * Edited files become revisions on their notes' heads, and markdown files new
  * in `folder` become notes titled by their filename.
- * @internal
  */
 export async function pushWiki(
 	appview: Client,
