@@ -17,3 +17,20 @@
 	vertical-align: middle;
 	margin-inline-end: var(--size-4-2);
 }
+
+.lichen-sync-syncing svg {
+	animation: lichen-sync-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes lichen-sync-pulse {
+	to {
+		opacity: 0.3;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.lichen-sync-syncing svg {
+		animation: none;
+		opacity: 0.5;
+	}
+}

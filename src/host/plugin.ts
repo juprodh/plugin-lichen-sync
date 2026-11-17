@@ -4,7 +4,7 @@ import {
 	isActorIdentifier,
 	type ResourceUri,
 } from "@atcute/lexicons/syntax";
-import { Notice, Platform, Plugin, TFile, TFolder } from "obsidian";
+import { Menu, Notice, Platform, Plugin, TFile, TFolder } from "obsidian";
 import { canWrite, lichenAppview } from "../core/appview.ts";
 import { lichenOAuth, signedInDid } from "../core/oauth.ts";
 import { type PluginData, parsePluginData } from "../core/plugin-data.ts";
@@ -23,6 +23,7 @@ import {
 	renameSyncedPath,
 	type SyncState,
 } from "../core/sync-state.ts";
+import { addLichenIcon, LICHEN_ICON } from "./icon.ts";
 import { type CallbackListener, listenForCallback } from "./loopback.ts";
 import { SettingsTab } from "./settings-tab.ts";
 import { hostVault } from "./vault.ts";
@@ -30,6 +31,7 @@ import { hostVault } from "./vault.ts";
 export class LichenSyncPlugin extends Plugin {
 	private data: PluginData = parsePluginData(undefined);
 	private syncing = false;
+	private ribbon: HTMLElement | null = null;
 	private signInListener: CallbackListener | null = null;
 	private readonly appview = lichenAppview();
 	private readonly oauth = lichenOAuth({
@@ -56,9 +58,12 @@ export class LichenSyncPlugin extends Plugin {
 		this.addCommand({
 			id: "sync",
 			name: "Sync all wikis",
-			callback: () =>
-				this.sync(this.data.settings.wikis.map((wiki) => wiki.uri)),
+			callback: () => this.syncAll(),
 		});
+		addLichenIcon();
+		this.ribbon = this.addRibbonIcon(LICHEN_ICON, "Lichen Sync", (evt) =>
+			this.openMenu(evt),
+		);
 		this.registerEvent(
 			this.app.vault.on("rename", (file, oldPath) => {
 				if (file instanceof TFolder) {
@@ -204,6 +209,55 @@ export class LichenSyncPlugin extends Plugin {
 		}
 	}
 
+	private openMenu(evt: MouseEvent): void {
+		const menu = new Menu();
+		const { wikis } = this.data.settings;
+		if (wikis.length > 0) {
+			menu.addItem((item) =>
+				item
+					.setTitle("Sync all wikis")
+					.setIcon("folder-sync")
+					.setDisabled(this.syncing)
+					.onClick(() => this.syncAll()),
+			);
+			menu.addSeparator();
+			for (const wiki of wikis) {
+				menu.addItem((item) =>
+					item
+						.setTitle(`Sync ${wiki.name || wikiRef(wiki)}`)
+						.setIcon("folder")
+						.setDisabled(this.syncing)
+						.onClick(() => this.sync([wiki.uri])),
+				);
+			}
+			menu.addSeparator();
+		}
+		menu.addItem((item) =>
+			item
+				.setTitle(wikis.length > 0 ? "Settings" : "Add a wiki")
+				.setIcon("settings")
+				.onClick(() => this.openSettings()),
+		);
+		menu.showAtMouseEvent(evt);
+	}
+
+	// Obsidian's API has no call that opens a plugin's own settings tab, so this one may go away.
+	private openSettings(): void {
+		const { setting } = this.app as unknown as {
+			setting?: { open?(): void; openTabById?(id: string): void };
+		};
+		if (!setting?.open || !setting.openTabById) {
+			new Notice("Lichen Sync: open Settings → Lichen Sync.");
+			return;
+		}
+		setting.open();
+		setting.openTabById(this.manifest.id);
+	}
+
+	private syncAll(): Promise<void> {
+		return this.sync(this.data.settings.wikis.map((wiki) => wiki.uri));
+	}
+
 	private async sync(uris: readonly ResourceUri[]): Promise<void> {
 		if (uris.length === 0) {
 			new Notice("Lichen Sync: add a wiki in settings first.");
@@ -211,6 +265,7 @@ export class LichenSyncPlugin extends Plugin {
 		}
 		if (this.syncing) return;
 		this.syncing = true;
+		this.ribbon?.addClass("lichen-sync-syncing");
 		let pds: Promise<Client | null> | undefined;
 		// Restored once a wiki takes a push, so a sync of pull-only wikis refreshes no token.
 		const author = (did: Did) => {
@@ -221,6 +276,7 @@ export class LichenSyncPlugin extends Plugin {
 			for (const uri of uris) await this.syncOne(uri, author);
 		} finally {
 			this.syncing = false;
+			this.ribbon?.removeClass("lichen-sync-syncing");
 		}
 	}
 
