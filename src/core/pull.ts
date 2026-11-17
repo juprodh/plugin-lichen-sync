@@ -53,12 +53,16 @@ export async function pullWiki(
 			report.written.push(path);
 		} else if (!synced) {
 			// Likely this note's file from a lost sync state, at an unknown revision: nothing to merge from.
-			report.recoveredCopies.push(await writeConflictCopy(vault, path, local));
+			report.recoveredCopies.push(
+				await writeConflictCopy(vault, folder, path, local),
+			);
 			await vault.write(path, note.content);
 		} else {
 			const merged = mergeText(synced.base, local, note.content);
 			if (merged === null) {
-				report.conflictCopies.push(await writeConflictCopy(vault, path, local));
+				report.conflictCopies.push(
+					await writeConflictCopy(vault, folder, path, local),
+				);
 				await vault.write(path, note.content);
 			} else if (merged !== local) {
 				await vault.write(path, merged);
@@ -81,11 +85,12 @@ export async function pullWiki(
 
 async function writeConflictCopy(
 	vault: Vault,
+	folder: string,
 	path: string,
 	content: string,
 ): Promise<string> {
 	for (let n = 1; ; n++) {
-		const copy = conflictCopyPath(path, n);
+		const copy = conflictCopyPath(folder, path, n);
 		if ((await vault.read(copy)) === null) {
 			await vault.write(copy, content);
 			return copy;

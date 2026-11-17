@@ -46,12 +46,17 @@ export function titleFromPath(path: string): string {
 	return stemOf(path.slice(path.lastIndexOf("/") + 1));
 }
 
-/**
- * The `n`th candidate for a copy of the file at `path`, in a sibling folder
- * outside the wiki's, since every markdown file in the wiki's folder is a note.
- */
-export function conflictCopyPath(path: string, n: number): string {
-	const slash = path.lastIndexOf("/");
+/** Where a wiki's conflict copies go: beside its folder, since every markdown file in the folder is a note. */
+export function conflictsFolder(folder: string): string {
+	return `${folder} (conflicts)`;
+}
+
+/** The `n`th candidate for a copy of the file at `path`, of the wiki synced into `folder`. */
+export function conflictCopyPath(
+	folder: string,
+	path: string,
+	n: number,
+): string {
 	const suffix = n > 1 ? ` ${n}` : "";
-	return `${path.slice(0, slash)} (conflicts)/${titleFromPath(path)}${suffix}.md`;
+	return `${conflictsFolder(folder)}/${titleFromPath(path)}${suffix}.md`;
 }

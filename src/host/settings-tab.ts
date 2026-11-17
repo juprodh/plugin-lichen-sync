@@ -8,8 +8,10 @@ import {
 	type Setting,
 	type SettingDefinitionItem,
 	type SettingDefinitionPage,
+	TFile,
 } from "obsidian";
 import { getWiki } from "../core/appview.ts";
+import { conflictsFolder } from "../core/filenames.ts";
 import {
 	folderClash,
 	isWithin,
@@ -135,6 +137,7 @@ export class SettingsTab extends PluginSettingTab {
 			type: "page",
 			name: wiki.name || wikiSlug(wiki),
 			displayValue: () => syncedLabel(this.current(wiki)),
+			status: () => (this.conflictCopies(wiki).length > 0 ? "warning" : null),
 			items: [
 				{
 					type: "group",
@@ -163,6 +166,17 @@ export class SettingsTab extends PluginSettingTab {
 								});
 							},
 						},
+						{
+							name: "Conflicts",
+							desc: "Your versions of notes changed on lichen.wiki at the same time. Copy back what you want, then delete the copy.",
+							visible: () => this.conflictCopies(wiki).length > 0,
+							render: (setting) => {
+								const count = this.conflictCopies(wiki).length;
+								setting.addDisplayValue((display) =>
+									display.setValue(`${count} to review`).setStatus("warning"),
+								);
+							},
+						},
 					],
 				},
 				{
@@ -178,6 +192,11 @@ export class SettingsTab extends PluginSettingTab {
 								await sync;
 								this.update();
 							},
+						},
+						{
+							name: "Review conflicts",
+							visible: () => this.conflictCopies(wiki).length > 0,
+							action: () => this.openConflicts(wiki),
 						},
 						{ name: "Move folder…", action: () => this.moveWiki(wiki.uri) },
 					],
@@ -223,6 +242,21 @@ export class SettingsTab extends PluginSettingTab {
 				})
 				.catch(() => display.setValue("Could not reach lichen.wiki"));
 		});
+	}
+
+	private conflictCopies(wiki: SyncedWiki): TFile[] {
+		const folder = this.app.vault.getFolderByPath(
+			conflictsFolder(this.current(wiki).folder),
+		);
+		return (folder?.children ?? []).filter(
+			(file): file is TFile => file instanceof TFile && file.extension === "md",
+		);
+	}
+
+	private async openConflicts(wiki: SyncedWiki): Promise<void> {
+		for (const file of this.conflictCopies(wiki)) {
+			await this.app.workspace.getLeaf("tab").openFile(file);
+		}
 	}
 
 	private addWiki(): void {
