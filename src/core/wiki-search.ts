@@ -6,22 +6,9 @@ import {
 	type ResourceUri,
 } from "@atcute/lexicons/syntax";
 import { getWiki, listWikis, searchWikis } from "./appview.ts";
-import { HANDLE_RESOLVER, resolveWiki } from "./identity.ts";
-import { asRecord } from "./json.ts";
+import { bareActor, resolveWiki } from "./identity.ts";
 
-// The community index lichen.wiki suggests handles from, for the sign-in field: suggestions only, it still takes any handle.
-// Mirrors lichen-repo/src/shared/handle-suggest.ts and avatar.ts until they move into @lichen/client.
-const HANDLE_INDEX = "https://typeahead.waow.tech";
-const ACTOR_LIMIT = 5;
 const SEARCH_LIMIT = 20;
-const TIMEOUT_MS = 2000;
-
-export interface Actor {
-	readonly did: Did;
-	readonly handle: string;
-	readonly displayName: string | null;
-	readonly avatar: string | null;
-}
 
 export interface WikiChoice {
 	readonly uri: ResourceUri;
@@ -41,15 +28,6 @@ export interface WikiRefQuery {
 	readonly slug: string | null;
 }
 
-/** Null when the value is too short to narrow the index, or already exact: a DID or a path. */
-export function actorQuery(value: string): string | null {
-	const query = value.trim().replace(/^@/, "");
-	if (query.length < 2 || query.startsWith("did:") || query.includes("/")) {
-		return null;
-	}
-	return query;
-}
-
 /** A lichen.wiki link to a wiki or anything in it, or its path from `@`: `@alice.test/notes`, `@alice.test/`. */
 export function parseWikiRef(text: string): WikiRefQuery | null {
 	const path = text
@@ -59,17 +37,6 @@ export function parseWikiRef(text: string): WikiRefQuery | null {
 	const [, actor, slug] = path.match(/^\/?@([^/\s]+)\/([^/?#\s]*)/) ?? [];
 	if (!isActorIdentifier(actor)) return null;
 	return { actor, slug: slug || null };
-}
-
-export async function searchActors(query: string): Promise<Actor[]> {
-	const body = await getJson(
-		`${HANDLE_INDEX}/xrpc/tech.waow.typeahead.searchActors?q=${encodeURIComponent(query)}&limit=${ACTOR_LIMIT}`,
-	);
-	return parseActors(body["actors"]).slice(0, ACTOR_LIMIT);
-}
-
-export async function getProfile(did: Did): Promise<Actor | null> {
-	return (await getProfiles([did])).get(did) ?? null;
 }
 
 /** Every wiki the account holds a role on, its own and others'. */
@@ -87,11 +54,7 @@ export async function findWikis(
 	query: string,
 	yours: readonly WikiChoice[],
 ): Promise<WikiChoice[]> {
-	const views = await searchWikis(
-		appview,
-		query.trim().replace(/^@/, ""),
-		SEARCH_LIMIT,
-	);
+	const views = await searchWikis(appview, bareActor(query), SEARCH_LIMIT);
 	return views.map((view) => choice(view, roleIn(yours, view.uri)));
 }
 
@@ -124,7 +87,7 @@ export function matchWikis(
 	choices: readonly WikiChoice[],
 	query: string,
 ): WikiChoice[] {
-	const needle = query.trim().replace(/^@/, "").toLowerCase();
+	const needle = bareActor(query).toLowerCase();
 	return choices.filter((wiki) =>
 		[wiki.name, wiki.slug, wiki.ownerHandle ?? ""].some((field) =>
 			field.toLowerCase().includes(needle),
@@ -164,72 +127,4 @@ function choice(wiki: ListedWiki, role: string | null): WikiChoice {
 
 function roleIn(yours: readonly WikiChoice[], uri: ResourceUri): string | null {
 	return yours.find((wiki) => wiki.uri === uri)?.role ?? null;
-}
-
-// getProfiles takes at most 25 actors.
-async function getProfiles(dids: Did[]): Promise<Map<Did, Actor>> {
-	if (dids.length === 0) return new Map();
-	const params = dids
-		.slice(0, 25)
-		.map((did) => `actors=${encodeURIComponent(did)}`)
-		.join("&");
-	const body = await getJson(
-		`${HANDLE_RESOLVER}/xrpc/app.bsky.actor.getProfiles?${params}`,
-	);
-	return new Map(
-		parseActors(body["profiles"]).map((actor) => [actor.did, actor]),
-	);
-}
-
-async function getJson(url: string): Promise<Record<string, unknown>> {
-	const res = await fetch(url, {
-		signal: AbortSignal.timeout(TIMEOUT_MS),
-		headers: { "X-Client": "lichen-sync" },
-	});
-	return res.ok ? asRecord(await res.json()) : {};
-}
-
-/**
- * Third-party actors: keeps those with a usable handle, and only avatars from Bluesky's CDN.
- * @internal
- */
-export function parseActors(list: unknown): Actor[] {
-	if (!Array.isArray(list)) return [];
-	return list.flatMap((item: unknown): Actor[] => {
-		const { did, handle, displayName, avatar } = asRecord(item);
-		// Bluesky's sentinel for a handle that failed its own bidirectional check.
-		if (
-			typeof did !== "string" ||
-			!isDid(did) ||
-			typeof handle !== "string" ||
-			!handle ||
-			handle === "handle.invalid"
-		) {
-			return [];
-		}
-		return [
-			{
-				did,
-				handle,
-				displayName:
-					typeof displayName === "string" && displayName.trim()
-						? displayName
-						: null,
-				avatar: typeof avatar === "string" ? thumbnail(avatar) : null,
-			},
-		];
-	});
-}
-
-// The ~150px variant: rows show avatars at 24px.
-function thumbnail(url: string): string | null {
-	try {
-		const parsed = new URL(url);
-		if (parsed.protocol !== "https:" || parsed.hostname !== "cdn.bsky.app") {
-			return null;
-		}
-	} catch {
-		return null;
-	}
-	return url.replace("/img/avatar/", "/img/avatar_thumbnail/");
 }

@@ -13,7 +13,7 @@ import {
 	type StoredSession,
 	type StoredState,
 } from "@atcute/oauth-node-client";
-import { HANDLE_RESOLVER } from "./identity.ts";
+import { BSKY_APPVIEW } from "./identity.ts";
 import { asRecord } from "./json.ts";
 
 // Fixed, since a loopback client's id embeds its redirect URI and a token refresh must present the same id.
@@ -39,7 +39,7 @@ export function lichenOAuth(sessions: SessionsStore): OAuthClient {
 	return new OAuthClient({
 		metadata: { redirect_uris: [REDIRECT_URI], scope: SCOPE },
 		actorResolver: new LocalActorResolver({
-			handleResolver: new XrpcHandleResolver({ serviceUrl: HANDLE_RESOLVER }),
+			handleResolver: new XrpcHandleResolver({ serviceUrl: BSKY_APPVIEW }),
 			didDocumentResolver: new CompositeDidDocumentResolver({
 				methods: {
 					plc: new PlcDidDocumentResolver(),

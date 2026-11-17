@@ -11,19 +11,25 @@ import {
 	TFile,
 } from "obsidian";
 import { getWiki } from "../core/appview.ts";
-import { conflictsFolder } from "../core/filenames.ts";
 import {
-	folderClash,
+	conflictsFolder,
 	folderLabel,
+	folderName,
 	isWithin,
+} from "../core/folders.ts";
+import { getProfile } from "../core/handle-suggest.ts";
+import {
+	findWiki,
+	folderClash,
 	type Settings,
 	type SyncedWiki,
+	wikiLabel,
 	wikiRef,
 	wikiSlug,
 } from "../core/settings.ts";
-import { getProfile, type WikiChoice } from "../core/suggest.ts";
+import type { WikiChoice } from "../core/wiki-search.ts";
 import { FolderPickerModal } from "./folder-picker.ts";
-import { ActorSuggest } from "./suggest.ts";
+import { ActorSuggest } from "./handle-suggest.ts";
 import { WikiPickerModal } from "./wiki-picker.ts";
 
 /** What the tab asks of the plugin, which owns data.json. */
@@ -216,7 +222,7 @@ export class SettingsTab extends PluginSettingTab {
 						{
 							name: "Stop syncing",
 							desc: wiki.folder
-								? `Forgets this wiki. The folder ${wiki.folder} and its files stay.`
+								? "Forgets this wiki. Its folder and files stay."
 								: "Forgets this wiki. Your vault's files stay.",
 							action: async (el) => {
 								// The page would stay open on a wiki that is gone; Obsidian has no API to leave it.
@@ -284,7 +290,7 @@ export class SettingsTab extends PluginSettingTab {
 				const synced = this.find(choice.uri);
 				if (synced) {
 					new Notice(
-						`Lichen Sync: ${choice.name} already syncs into ${synced.folder || "the whole vault"}.`,
+						`Lichen Sync: ${choice.name} already syncs into ${folderName(synced.folder)}.`,
 					);
 					return;
 				}
@@ -325,13 +331,13 @@ export class SettingsTab extends PluginSettingTab {
 	private async stopSyncing(wiki: SyncedWiki): Promise<void> {
 		await this.host.removeWiki(wiki.uri);
 		new Notice(
-			`Lichen Sync: stopped syncing ${wiki.name || wikiRef(wiki)}. ${wiki.folder ? `${wiki.folder} stays as it is` : "Your files stay as they are"}.`,
+			`Lichen Sync: stopped syncing ${wikiLabel(wiki)}. ${wiki.folder ? `${wiki.folder} stays as it is` : "Your files stay as they are"}.`,
 		);
 		this.update();
 	}
 
 	private find(uri: ResourceUri): SyncedWiki | undefined {
-		return this.host.settings().wikis.find((wiki) => wiki.uri === uri);
+		return findWiki(this.host.settings().wikis, uri);
 	}
 
 	// A page outlives a pull or a move, so it reads the wiki afresh.
@@ -342,7 +348,7 @@ export class SettingsTab extends PluginSettingTab {
 
 function clashProblem(clash: SyncedWiki | undefined): string | null {
 	return clash
-		? `${clash.folder || "The whole vault"} already syncs ${clash.name || wikiRef(clash)}; wiki folders cannot nest.`
+		? `${wikiLabel(clash)} already syncs into ${folderName(clash.folder)}; wiki folders cannot nest.`
 		: null;
 }
 

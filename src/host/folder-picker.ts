@@ -1,6 +1,8 @@
-import { type App, SuggestModal, TFile, TFolder } from "obsidian";
-import { normalizeFolder } from "../core/settings.ts";
-import { renderRow } from "./suggest.ts";
+import { type App, SuggestModal } from "obsidian";
+import { folderLabel, normalizeFolder } from "../core/folders.ts";
+import { plural } from "../core/plural.ts";
+import { renderRow } from "./suggestion-row.ts";
+import { notePaths } from "./vault.ts";
 
 interface FolderItem {
 	/** "" for the whole vault. */
@@ -19,7 +21,7 @@ interface FolderPickerOptions {
 	onPick(folder: string): void;
 }
 
-const LIMIT = 8;
+const FOLDER_LIMIT = 8;
 
 export class FolderPickerModal extends SuggestModal<FolderItem> {
 	constructor(
@@ -49,7 +51,7 @@ export class FolderPickerModal extends SuggestModal<FolderItem> {
 			items.push({ path: typed, notes: null });
 		}
 		if (this.options.allowExisting && !this.options.problem("")) {
-			items.push({ path: "", notes: markdownFiles(this.app.vault.getRoot()) });
+			items.push({ path: "", notes: notePaths(this.app, "").length });
 		}
 		if (this.options.allowExisting) {
 			const needle = typed.toLowerCase();
@@ -66,11 +68,11 @@ export class FolderPickerModal extends SuggestModal<FolderItem> {
 						Number(b.path === typed) - Number(a.path === typed) ||
 						a.path.length - b.path.length,
 				)
-				.slice(0, LIMIT);
+				.slice(0, FOLDER_LIMIT);
 			items.push(
 				...existing.map((folder) => ({
 					path: folder.path,
-					notes: markdownFiles(folder),
+					notes: notePaths(this.app, folder.path).length,
 				})),
 			);
 		}
@@ -82,18 +84,10 @@ export class FolderPickerModal extends SuggestModal<FolderItem> {
 	}
 
 	override renderSuggestion(item: FolderItem, el: HTMLElement): void {
-		const notes = `${item.notes} note${item.notes === 1 ? "" : "s"}`;
 		renderRow(el, {
 			avatar: null,
-			title: item.path || "Whole vault",
-			note:
-				item.notes === null
-					? "New folder"
-					: !item.path
-						? `Your vault as this wiki, and no other: its ${notes} join the wiki at your next sync, if you can edit it`
-						: item.notes === 0
-							? "Existing folder, no notes in it"
-							: `Existing folder: its ${notes} join the wiki at your next sync, if you can edit it`,
+			title: folderLabel(item.path),
+			note: folderNote(item),
 		});
 	}
 
@@ -102,11 +96,11 @@ export class FolderPickerModal extends SuggestModal<FolderItem> {
 	}
 }
 
-function markdownFiles(folder: TFolder): number {
-	let count = 0;
-	for (const file of folder.children) {
-		if (file instanceof TFolder) count += markdownFiles(file);
-		else if (file instanceof TFile && file.extension === "md") count++;
-	}
-	return count;
+function folderNote({ path, notes }: FolderItem): string {
+	if (notes === null) return "New folder";
+	const joining = `its ${notes} ${plural("note", notes)} join the wiki at your next sync, if you can edit it`;
+	if (!path) return `Your vault as this wiki, and no other: ${joining}`;
+	return notes === 0
+		? "Existing folder, no notes in it"
+		: `Existing folder: ${joining}`;
 }

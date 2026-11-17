@@ -1,4 +1,5 @@
 import { SIDEBAR_NOTE_SLUG } from "@lichen/client/slug";
+import { conflictsFolder } from "./folders.ts";
 
 // sanitizeFilename and deduplicateFilename mirror lichen-repo
 // src/import-export/filenames.ts, so a synced folder names files as an export does.
@@ -49,11 +50,6 @@ export function claimPath(
 
 export function titleFromPath(path: string): string {
 	return stemOf(path.slice(path.lastIndexOf("/") + 1));
-}
-
-/** Where a wiki's conflict copies go: beside its folder, or in the vault's root for a whole-vault wiki, which leaves it out. */
-export function conflictsFolder(folder: string): string {
-	return folder ? `${folder} (conflicts)` : "Lichen conflicts";
 }
 
 /** The `n`th candidate for a copy of the file at `path`, of the wiki synced into `folder`. */

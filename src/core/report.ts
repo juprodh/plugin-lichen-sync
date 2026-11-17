@@ -1,4 +1,5 @@
 import type { CheckProblem } from "@lichen/client/check";
+import { plural } from "./plural.ts";
 import type { PullReport } from "./pull.ts";
 import type { PushReport } from "./push.ts";
 
@@ -38,7 +39,7 @@ export function describeSync(
 }
 
 function notes(count: number): string {
-	return `${count} note${count === 1 ? "" : "s"}`;
+	return `${count} ${plural("note", count)}`;
 }
 
 // lichen.wiki's wording (lichen-repo/src/i18n/locales/en.json).

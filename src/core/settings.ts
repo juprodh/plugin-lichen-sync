@@ -1,6 +1,6 @@
 import { isResourceUri, type ResourceUri } from "@atcute/lexicons/syntax";
 import { parseAtUri } from "@lichen/client/at-uri";
-import { conflictsFolder } from "./filenames.ts";
+import { isWithin, normalizeFolder } from "./folders.ts";
 import { asRecord, stringField } from "./json.ts";
 
 /** A wiki kept in sync with one vault folder. */
@@ -47,20 +47,22 @@ export function wikiSlug(wiki: SyncedWiki): string {
 	return parseAtUri(wiki.uri)?.rkey ?? "";
 }
 
+export function findWiki(
+	wikis: readonly SyncedWiki[],
+	uri: string,
+): SyncedWiki | undefined {
+	return wikis.find((wiki) => wiki.uri === uri);
+}
+
+/** The wiki's name, or its reference when it has none. */
+export function wikiLabel(wiki: SyncedWiki): string {
+	return wiki.name || wikiRef(wiki);
+}
+
 /** As lichen.wiki's URLs name it: `@handle/slug`, or the owner's DID when the handle is unknown. */
 export function wikiRef(wiki: SyncedWiki): string {
 	const owner = wiki.ownerHandle || parseAtUri(wiki.uri)?.repo || "";
 	return `@${owner}/${wikiSlug(wiki)}`;
-}
-
-export function normalizeFolder(path: string): string {
-	return path
-		.trim()
-		.replaceAll("\\", "/")
-		.split("/")
-		.map((part) => part.trim())
-		.filter(Boolean)
-		.join("/");
 }
 
 /** The synced wiki whose folder holds `folder` or sits inside it: a file is one wiki's note at most. */
@@ -87,21 +89,4 @@ export function followFolderRename(
 			? { ...wiki, folder: to + wiki.folder.slice(from.length) }
 			: wiki,
 	);
-}
-
-export function isWithin(path: string, folder: string): boolean {
-	return folder === "" || path === folder || path.startsWith(`${folder}/`);
-}
-
-/** Whether the markdown file at `path` is a note of the wiki synced into `folder`: any file in it or its subfolders. */
-export function isNotePath(folder: string, path: string): boolean {
-	return (
-		path !== folder &&
-		isWithin(path, folder) &&
-		!isWithin(path, conflictsFolder(folder))
-	);
-}
-
-export function folderLabel(folder: string): string {
-	return folder || "Whole vault";
 }

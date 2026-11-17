@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { isNotePath } from "../../src/core/settings.ts";
+import { isNotePath } from "../../src/core/folders.ts";
 import {
 	moveSyncedFolder,
 	renameSyncedPath,

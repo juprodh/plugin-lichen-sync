@@ -1,5 +1,5 @@
+import { isWithin } from "./folders.ts";
 import { asRecord, stringField } from "./json.ts";
-import { isWithin } from "./settings.ts";
 
 /** What the last sync left for one note, to tell a remote change from a local one. */
 export interface SyncedNote {

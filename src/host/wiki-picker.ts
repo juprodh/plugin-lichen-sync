@@ -6,21 +6,26 @@ import {
 } from "@atcute/lexicons/syntax";
 import { type App, SuggestModal } from "obsidian";
 import { debounced } from "../core/debounce.ts";
-import { resolveOwner } from "../core/identity.ts";
+import { folderName } from "../core/folders.ts";
 import {
 	type Actor,
 	actorQuery,
+	searchActors,
+} from "../core/handle-suggest.ts";
+import { bareActor, resolveOwner } from "../core/identity.ts";
+import { plural } from "../core/plural.ts";
+import {
 	findWikis,
 	matchWikis,
 	mergeWikis,
 	parseWikiRef,
-	searchActors,
 	type WikiChoice,
 	wikiAt,
 	wikisOf,
 	yourWikis,
-} from "../core/suggest.ts";
-import { DEBOUNCE_MS, renderActor, renderRow } from "./suggest.ts";
+} from "../core/wiki-search.ts";
+import { DEBOUNCE_MS, renderActor } from "./handle-suggest.ts";
+import { renderRow } from "./suggestion-row.ts";
 
 type PickerItem =
 	| { readonly kind: "wiki"; readonly wiki: WikiChoice }
@@ -98,7 +103,7 @@ export class WikiPickerModal extends SuggestModal<PickerItem> {
 			case "wiki": {
 				const { wiki } = item;
 				const folder = this.context.syncedFolder(wiki.uri);
-				const notes = `${wiki.noteCount} note${wiki.noteCount === 1 ? "" : "s"}`;
+				const notes = `${wiki.noteCount} ${plural("note", wiki.noteCount)}`;
 				renderRow(el, {
 					avatar: null,
 					title: wiki.name,
@@ -106,7 +111,7 @@ export class WikiPickerModal extends SuggestModal<PickerItem> {
 					aux:
 						folder === undefined
 							? `${wiki.role ?? "read only"} · ${notes}`
-							: `syncs into ${folder || "the whole vault"}`,
+							: `syncs into ${folderName(folder)}`,
 				});
 			}
 		}
@@ -154,7 +159,7 @@ export class WikiPickerModal extends SuggestModal<PickerItem> {
 	}
 
 	private async findAccount(query: string): Promise<PickerItem[]> {
-		const typed = query.trim().replace(/^@/, "");
+		const typed = bareActor(query);
 		const people = actorQuery(query);
 		const actors = people ? await searchActors(people).catch(() => []) : [];
 		const items: PickerItem[] = actors.map((actor) => ({

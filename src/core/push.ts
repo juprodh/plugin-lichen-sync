@@ -16,7 +16,7 @@ import {
 } from "@lichen/client/writes";
 import { canWrite, getNote, isSlugTaken } from "./appview.ts";
 import { titleFromPath } from "./filenames.ts";
-import { isNotePath } from "./settings.ts";
+import { isNotePath } from "./folders.ts";
 import type { SyncedNote, WikiState } from "./sync-state.ts";
 import type { Vault } from "./vault.ts";
 

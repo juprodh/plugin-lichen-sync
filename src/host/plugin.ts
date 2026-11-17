@@ -4,26 +4,29 @@ import {
 	isActorIdentifier,
 	type ResourceUri,
 } from "@atcute/lexicons/syntax";
-import { Menu, Notice, Platform, Plugin, TFile, TFolder } from "obsidian";
+import { Menu, Notice, Plugin, TFile, TFolder } from "obsidian";
 import { canWrite, lichenAppview } from "../core/appview.ts";
+import { isNotePath } from "../core/folders.ts";
+import { bareActor } from "../core/identity.ts";
 import { lichenOAuth, signedInDid } from "../core/oauth.ts";
 import { type PluginData, parsePluginData } from "../core/plugin-data.ts";
 import { pullWiki } from "../core/pull.ts";
 import { type PushReport, pushWiki } from "../core/push.ts";
 import { describeSync } from "../core/report.ts";
 import {
+	findWiki,
 	followFolderRename,
-	isNotePath,
 	type Settings,
 	type SyncedWiki,
-	wikiRef,
+	wikiLabel,
 } from "../core/settings.ts";
-import type { WikiChoice } from "../core/suggest.ts";
 import {
 	moveSyncedFolder,
 	renameSyncedPath,
 	type SyncState,
+	type WikiState,
 } from "../core/sync-state.ts";
+import type { WikiChoice } from "../core/wiki-search.ts";
 import { addLichenIcon, LICHEN_ICON } from "./icon.ts";
 import { type CallbackListener, listenForCallback } from "./loopback.ts";
 import { SettingsTab } from "./settings-tab.ts";
@@ -78,43 +81,26 @@ export class LichenSyncPlugin extends Plugin {
 	}
 
 	private async followRename(from: string, to: string): Promise<void> {
-		const sync: Record<string, SyncState[string]> = {};
-		for (const [uri, state] of Object.entries(this.data.sync)) {
-			const wiki = this.data.settings.wikis.find((w) => w.uri === uri);
-			sync[uri] = wiki
-				? renameSyncedPath(state, from, to, (path) =>
-						isNotePath(wiki.folder, path),
-					)
-				: state;
-		}
-		if (Object.keys(sync).some((wiki) => sync[wiki] !== this.data.sync[wiki])) {
-			await this.save({ ...this.data, sync });
-		}
+		const sync = followSync(
+			this.data.sync,
+			this.data.settings.wikis,
+			(state, isNote) => renameSyncedPath(state, from, to, isNote),
+		);
+		if (sync) await this.save({ ...this.data, sync });
 	}
 
 	// A wiki's folder, a folder holding it or one of its subfolders moved: the wiki and its notes follow.
 	private async followFolder(from: string, to: string): Promise<void> {
 		const { wikis } = this.data.settings;
 		const moved = followFolderRename(wikis, from, to);
-		const sync: Record<string, SyncState[string]> = {};
-		for (const [uri, state] of Object.entries(this.data.sync)) {
-			const wiki = moved.find((w) => w.uri === uri);
-			sync[uri] = wiki
-				? moveSyncedFolder(state, from, to, (path) =>
-						isNotePath(wiki.folder, path),
-					)
-				: state;
-		}
-		if (
-			moved.every((wiki, i) => wiki === wikis[i]) &&
-			Object.keys(sync).every((uri) => sync[uri] === this.data.sync[uri])
-		) {
-			return;
-		}
+		const sync = followSync(this.data.sync, moved, (state, isNote) =>
+			moveSyncedFolder(state, from, to, isNote),
+		);
+		if (!sync && moved.every((wiki, i) => wiki === wikis[i])) return;
 		await this.save({
 			...this.data,
 			settings: { ...this.data.settings, wikis: moved },
-			sync,
+			sync: sync ?? this.data.sync,
 		});
 	}
 
@@ -146,7 +132,7 @@ export class LichenSyncPlugin extends Plugin {
 	}
 
 	private async moveWiki(uri: ResourceUri, folder: string): Promise<void> {
-		const wiki = this.data.settings.wikis.find((w) => w.uri === uri);
+		const wiki = findWiki(this.data.settings.wikis, uri);
 		// The vault's root cannot move.
 		if (!wiki?.folder || wiki.folder === folder) return;
 		const current = this.app.vault.getFolderByPath(wiki.folder);
@@ -182,12 +168,9 @@ export class LichenSyncPlugin extends Plugin {
 		this.stopSignIn();
 		let listener: CallbackListener | null = null;
 		try {
-			const actor = account.trim().replace(/^@/, "");
+			const actor = bareActor(account);
 			if (!isActorIdentifier(actor)) {
 				throw new Error(`Not a handle or a DID: "${account}"`);
-			}
-			if (!Platform.isDesktopApp) {
-				throw new Error("Signing in needs the desktop app for now.");
 			}
 			await this.saveSettings({ account: actor });
 			listener = await listenForCallback();
@@ -242,7 +225,7 @@ export class LichenSyncPlugin extends Plugin {
 			for (const wiki of wikis) {
 				menu.addItem((item) =>
 					item
-						.setTitle(`Sync ${wiki.name || wikiRef(wiki)}`)
+						.setTitle(`Sync ${wikiLabel(wiki)}`)
 						.setIcon("folder")
 						.setDisabled(this.syncing)
 						.onClick(() => this.sync([wiki.uri])),
@@ -302,9 +285,9 @@ export class LichenSyncPlugin extends Plugin {
 		uri: ResourceUri,
 		author: (did: Did) => Promise<Client | null>,
 	): Promise<void> {
-		const wiki = this.data.settings.wikis.find((w) => w.uri === uri);
+		const wiki = findWiki(this.data.settings.wikis, uri);
 		if (!wiki) return;
-		const label = wiki.name || wikiRef(wiki);
+		const label = wikiLabel(wiki);
 		try {
 			const pulled = await pullWiki(
 				this.appview,
@@ -353,7 +336,7 @@ export class LichenSyncPlugin extends Plugin {
 
 	private async saveSync(
 		uri: ResourceUri,
-		state: SyncState[string],
+		state: WikiState,
 		pulledAt?: string,
 	): Promise<void> {
 		await this.save({
@@ -369,6 +352,24 @@ export class LichenSyncPlugin extends Plugin {
 			sync: { ...this.data.sync, [uri]: state },
 		});
 	}
+}
+
+/** The sync state with each wiki's notes moved by `move`, or null when none moved. */
+function followSync(
+	sync: SyncState,
+	wikis: readonly SyncedWiki[],
+	move: (state: WikiState, isNote: (path: string) => boolean) => WikiState,
+): SyncState | null {
+	let changed = false;
+	const followed: Record<string, WikiState> = {};
+	for (const [uri, state] of Object.entries(sync)) {
+		const wiki = findWiki(wikis, uri);
+		followed[uri] = wiki
+			? move(state, (path) => isNotePath(wiki.folder, path))
+			: state;
+		changed ||= followed[uri] !== state;
+	}
+	return changed ? followed : null;
 }
 
 function reasonOf(err: unknown): string {

@@ -9,8 +9,13 @@ import {
 import { formatAtUri } from "@lichen/client/at-uri";
 import { COLLECTIONS } from "@lichen/client/collections";
 
-// Answers with CORS headers, which a handle's own /.well-known/atproto-did often lacks.
-export const HANDLE_RESOLVER = "https://public.api.bsky.app";
+// Resolves handles with CORS headers, which a handle's own /.well-known/atproto-did often lacks, and serves profiles.
+export const BSKY_APPVIEW = "https://public.api.bsky.app";
+
+/** A handle or DID as typed: without the "@" or surrounding whitespace. */
+export function bareActor(typed: string): string {
+	return typed.trim().replace(/^@/, "");
+}
 
 /** The wiki's at-uri, from its owner's handle or DID as typed or linked: "@" and whitespace allowed. */
 export async function resolveWiki(
@@ -21,11 +26,11 @@ export async function resolveWiki(
 }
 
 export async function resolveOwner(owner: string): Promise<Did> {
-	const actor = owner.trim().replace(/^@/, "");
+	const actor = bareActor(owner);
 	if (isDid(actor)) return actor;
 	if (!isHandle(actor)) throw new Error(`Not a handle or a DID: "${owner}"`);
 	const resolver = new Client({
-		handler: simpleFetchHandler({ service: HANDLE_RESOLVER }),
+		handler: simpleFetchHandler({ service: BSKY_APPVIEW }),
 	});
 	const { did } = await ok(
 		resolver.get("com.atproto.identity.resolveHandle", {
