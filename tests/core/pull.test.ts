@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { pullWiki } from "../../src/core/pull.ts";
 import {
+	type FakeNote,
 	fakeAppview,
 	fakeNote,
 	memoryVault,
@@ -118,4 +119,34 @@ test("without sync state, a file at the note's name is taken, its text set aside
 		"notes/a.md",
 		"notes/b.md",
 	]);
+});
+
+test("a whole-vault wiki writes at the root and keeps conflict copies in their own folder", async () => {
+	const notes = [fakeNote("b", { content: "one\n" })];
+	const { vault, files } = memoryVault();
+	const { state } = await pullWiki(
+		fakeAppview(notes).client,
+		vault,
+		WIKI,
+		"",
+		{},
+	);
+	expect(files.get("b.md")).toBe("one\n");
+	files.set("b.md", "mine\n");
+	notes[0] = {
+		...(notes[0] as FakeNote),
+		content: "theirs\n",
+		head: revisionUri("b-2"),
+	};
+
+	const { report } = await pullWiki(
+		fakeAppview(notes).client,
+		vault,
+		WIKI,
+		"",
+		state,
+	);
+
+	expect(report.conflictCopies).toEqual(["Lichen conflicts/b.md"]);
+	expect(files.get("Lichen conflicts/b.md")).toBe("mine\n");
 });

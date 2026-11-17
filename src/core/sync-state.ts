@@ -16,37 +16,37 @@ export type WikiState = Readonly<Record<string, SyncedNote>>;
 /** Keyed by wiki at-uri. */
 export type SyncState = Readonly<Record<string, WikiState>>;
 
-/** The state with the note synced at `from` moved to `to`, when both are in one folder. */
+/** The state with the note synced at `from` moved to `to`, when `to` is still one of the wiki's notes. */
 export function renameSyncedPath(
 	state: WikiState,
 	from: string,
 	to: string,
+	isNote: (path: string) => boolean,
 ): WikiState {
-	// A file moved out of the wiki's folder is no longer a note, so it reads as missing.
-	if (
-		from.slice(0, from.lastIndexOf("/")) !== to.slice(0, to.lastIndexOf("/"))
-	) {
-		return state;
-	}
+	// A file moved out of the wiki is no longer a note, so it reads as missing.
+	if (!isNote(to)) return state;
 	const entry = Object.entries(state).find(([, note]) => note.path === from);
 	if (!entry) return state;
 	const [uri, note] = entry;
 	return { ...state, [uri]: { ...note, path: to } };
 }
 
-/** The state with every note synced at or under `from` moved to `to`. */
+/** The state with every note synced at or under `from` moved to `to`, those still the wiki's notes. */
 export function moveSyncedFolder(
 	state: WikiState,
 	from: string,
 	to: string,
+	isNote: (path: string) => boolean,
 ): WikiState {
+	let changed = false;
 	const moved: Record<string, SyncedNote> = {};
 	for (const [uri, note] of Object.entries(state)) {
-		moved[uri] = isWithin(note.path, from)
-			? { ...note, path: to + note.path.slice(from.length) }
-			: note;
+		const path = to + note.path.slice(from.length);
+		const follows = isWithin(note.path, from) && isNote(path);
+		changed ||= follows;
+		moved[uri] = follows ? { ...note, path } : note;
 	}
-	return moved;
+	return changed ? moved : state;
 }
 
 // An entry missing a field cannot be trusted to guard a local edit, so it is dropped.

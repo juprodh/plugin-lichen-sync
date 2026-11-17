@@ -14,13 +14,13 @@ import {
 const AUTHOR = "did:plc:author";
 const noWait = { attempts: 3, sleep: async () => {} };
 
-async function pulled(notes = [fakeNote("a")]) {
+async function pulled(notes = [fakeNote("a")], folder = "notes") {
 	const { vault, files } = memoryVault();
 	const { state } = await pullWiki(
 		fakeAppview(notes).client,
 		vault,
 		WIKI,
-		"notes",
+		folder,
 		{},
 	);
 	return { notes, vault, files, state };
@@ -30,7 +30,7 @@ function push(
 	notes: ReturnType<typeof fakeNote>[],
 	vault: ReturnType<typeof memoryVault>["vault"],
 	state: Awaited<ReturnType<typeof pulled>>["state"],
-	{ editor = true, ingest = true } = {},
+	{ editor = true, ingest = true, folder = "notes" } = {},
 ) {
 	const pds = fakePds(notes, { ingest });
 	const appview = fakeAppview(notes, { editors: editor ? [AUTHOR] : [] });
@@ -40,7 +40,7 @@ function push(
 		AUTHOR,
 		vault,
 		WIKI,
-		"notes",
+		folder,
 		state,
 		noWait,
 	);
@@ -152,4 +152,41 @@ test("creates nothing while a synced file is missing, since a new file may be it
 	expect(report.missing).toEqual(["notes/a.md"]);
 	expect(report.heldBack).toEqual(["notes/Renamed.md"]);
 	expect(pds.records).toEqual([]);
+});
+
+test("a new file in a subfolder becomes a note too", async () => {
+	const { notes, vault, files, state } = await pulled();
+	files.set("notes/Projects/Plan.md", "plan");
+
+	const { result } = push(notes, vault, state);
+
+	expect((await result).report.created).toEqual(["notes/Projects/Plan.md"]);
+});
+
+test("a second new file of the same name is reported, even before lichen.wiki shows the first", async () => {
+	const { notes, vault, files, state } = await pulled();
+	files.set("notes/Projects/Plan.md", "first");
+	files.set("notes/Archive/Plan.md", "second");
+
+	const { pds, result } = push(notes, vault, state, {
+		ingest: false,
+	});
+	const { report } = await result;
+
+	expect(report.pending).toEqual(["notes/Projects/Plan.md"]);
+	expect(report.taken).toEqual(["notes/Archive/Plan.md"]);
+	expect(
+		pds.records.filter((r) => r.collection === "wiki.lichen.note"),
+	).toHaveLength(1);
+});
+
+test("a whole-vault wiki syncs at the root and leaves its conflict copies out", async () => {
+	const { notes, vault, files, state } = await pulled([fakeNote("a")], "");
+	expect(Object.values(state).map((note) => note.path)).toEqual(["a.md"]);
+	files.set("Projects/Plan.md", "plan");
+	files.set("Lichen conflicts/Aside.md", "set aside");
+
+	const { result } = push(notes, vault, state, { folder: "" });
+
+	expect((await result).report.created).toEqual(["Projects/Plan.md"]);
 });

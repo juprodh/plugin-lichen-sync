@@ -16,6 +16,7 @@ import {
 } from "@lichen/client/writes";
 import { canWrite, getNote, isSlugTaken } from "./appview.ts";
 import { titleFromPath } from "./filenames.ts";
+import { isNotePath } from "./settings.ts";
 import type { SyncedNote, WikiState } from "./sync-state.ts";
 import type { Vault } from "./vault.ts";
 
@@ -77,12 +78,14 @@ interface PushRun {
 	readonly wiki: ResourceUri;
 	readonly wait: WaitOptions | undefined;
 	readonly state: Record<string, SyncedNote>;
+	/** Slugs this run created notes for: two files in different subfolders can share a name. */
+	readonly slugs: Set<string>;
 	readonly report: { [K in keyof PushReport]: PushReport[K][number][] };
 }
 
 /**
  * Edited files become revisions on their notes' heads, and markdown files new
- * in `folder` become notes titled by their filename.
+ * in `folder` or its subfolders become notes titled by their filename.
  */
 export async function pushWiki(
 	appview: Client,
@@ -104,6 +107,7 @@ export async function pushWiki(
 		wiki,
 		wait,
 		state: { ...known },
+		slugs: new Set(),
 		report: {
 			pushed: [],
 			created: [],
@@ -133,7 +137,7 @@ export async function pushWiki(
 	const syncedPaths = new Set(Object.values(known).map((note) => note.path));
 	const newFiles = new Map<string, string>();
 	for (const path of await vault.list(folder)) {
-		if (syncedPaths.has(path)) continue;
+		if (syncedPaths.has(path) || !isNotePath(folder, path)) continue;
 		const content = await vault.read(path);
 		if (content !== null) newFiles.set(path, content);
 	}
@@ -240,10 +244,14 @@ async function createNote(
 		run.report.refused.push({ path, problem });
 		return;
 	}
-	if (await isSlugTaken(run.appview, run.wiki, titleCheck.slug)) {
+	if (
+		run.slugs.has(titleCheck.slug) ||
+		(await isSlugTaken(run.appview, run.wiki, titleCheck.slug))
+	) {
 		run.report.taken.push(path);
 		return;
 	}
+	run.slugs.add(titleCheck.slug);
 
 	const writes = newNoteWrites(run.author, {
 		wikiRef: run.wiki,

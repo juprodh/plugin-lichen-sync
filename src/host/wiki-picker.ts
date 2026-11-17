@@ -103,9 +103,10 @@ export class WikiPickerModal extends SuggestModal<PickerItem> {
 					avatar: null,
 					title: wiki.name,
 					note: `@${wiki.ownerHandle ?? wiki.ownerDid}/${wiki.slug}`,
-					aux: folder
-						? `syncs into ${folder}`
-						: `${wiki.role ?? "read only"} · ${notes}`,
+					aux:
+						folder === undefined
+							? `${wiki.role ?? "read only"} · ${notes}`
+							: `syncs into ${folder || "the whole vault"}`,
 				});
 			}
 		}

@@ -13,6 +13,7 @@ import { type PushReport, pushWiki } from "../core/push.ts";
 import { describeSync } from "../core/report.ts";
 import {
 	followFolderRename,
+	isNotePath,
 	type Settings,
 	type SyncedWiki,
 	wikiRef,
@@ -78,22 +79,37 @@ export class LichenSyncPlugin extends Plugin {
 
 	private async followRename(from: string, to: string): Promise<void> {
 		const sync: Record<string, SyncState[string]> = {};
-		for (const [wiki, state] of Object.entries(this.data.sync)) {
-			sync[wiki] = renameSyncedPath(state, from, to);
+		for (const [uri, state] of Object.entries(this.data.sync)) {
+			const wiki = this.data.settings.wikis.find((w) => w.uri === uri);
+			sync[uri] = wiki
+				? renameSyncedPath(state, from, to, (path) =>
+						isNotePath(wiki.folder, path),
+					)
+				: state;
 		}
 		if (Object.keys(sync).some((wiki) => sync[wiki] !== this.data.sync[wiki])) {
 			await this.save({ ...this.data, sync });
 		}
 	}
 
-	// A wiki's folder, or a folder holding it, moved: the wiki and its notes follow.
+	// A wiki's folder, a folder holding it or one of its subfolders moved: the wiki and its notes follow.
 	private async followFolder(from: string, to: string): Promise<void> {
 		const { wikis } = this.data.settings;
 		const moved = followFolderRename(wikis, from, to);
-		if (moved.every((wiki, i) => wiki === wikis[i])) return;
 		const sync: Record<string, SyncState[string]> = {};
-		for (const [wiki, state] of Object.entries(this.data.sync)) {
-			sync[wiki] = moveSyncedFolder(state, from, to);
+		for (const [uri, state] of Object.entries(this.data.sync)) {
+			const wiki = moved.find((w) => w.uri === uri);
+			sync[uri] = wiki
+				? moveSyncedFolder(state, from, to, (path) =>
+						isNotePath(wiki.folder, path),
+					)
+				: state;
+		}
+		if (
+			moved.every((wiki, i) => wiki === wikis[i]) &&
+			Object.keys(sync).every((uri) => sync[uri] === this.data.sync[uri])
+		) {
+			return;
 		}
 		await this.save({
 			...this.data,
@@ -131,7 +147,8 @@ export class LichenSyncPlugin extends Plugin {
 
 	private async moveWiki(uri: ResourceUri, folder: string): Promise<void> {
 		const wiki = this.data.settings.wikis.find((w) => w.uri === uri);
-		if (!wiki || wiki.folder === folder) return;
+		// The vault's root cannot move.
+		if (!wiki?.folder || wiki.folder === folder) return;
 		const current = this.app.vault.getFolderByPath(wiki.folder);
 		try {
 			if (current) {

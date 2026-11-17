@@ -1,4 +1,4 @@
-import { type App, normalizePath, TFile } from "obsidian";
+import { type App, normalizePath, TFile, TFolder } from "obsidian";
 import type { Vault } from "../core/vault.ts";
 
 export function hostVault(app: App): Vault {
@@ -18,12 +18,21 @@ export function hostVault(app: App): Vault {
 			await app.vault.create(normalized, content);
 		},
 		async list(folder) {
-			const children = app.vault.getFolderByPath(
-				normalizePath(folder),
-			)?.children;
-			return (children ?? [])
-				.filter((file) => file instanceof TFile && file.extension === "md")
-				.map((file) => file.path);
+			const paths: string[] = [];
+			const walk = (dir: TFolder) => {
+				for (const file of dir.children) {
+					if (file instanceof TFile && file.extension === "md") {
+						paths.push(file.path);
+					} else if (file instanceof TFolder) {
+						walk(file);
+					}
+				}
+			};
+			const root = folder
+				? app.vault.getFolderByPath(normalizePath(folder))
+				: app.vault.getRoot();
+			if (root) walk(root);
+			return paths;
 		},
 	};
 }

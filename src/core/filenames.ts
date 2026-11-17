@@ -17,6 +17,11 @@ function deduplicateFilename(name: string, used: ReadonlySet<string>): string {
 	return `${name}-${counter}`;
 }
 
+/** `name` in `folder`, where "" is the vault's root. */
+function joinPath(folder: string, name: string): string {
+	return folder ? `${folder}/${name}` : name;
+}
+
 function stemOf(path: string): string {
 	return path.replace(/\.md$/, "");
 }
@@ -37,7 +42,7 @@ export function claimPath(
 		note.slug === SIDEBAR_NOTE_SLUG
 			? SIDEBAR_NOTE_SLUG
 			: sanitizeFilename(note.title);
-	const stem = deduplicateFilename(`${folder}/${name}`, used);
+	const stem = deduplicateFilename(joinPath(folder, name), used);
 	used.add(stem.toLowerCase());
 	return `${stem}.md`;
 }
@@ -46,9 +51,9 @@ export function titleFromPath(path: string): string {
 	return stemOf(path.slice(path.lastIndexOf("/") + 1));
 }
 
-/** Where a wiki's conflict copies go: beside its folder, since every markdown file in the folder is a note. */
+/** Where a wiki's conflict copies go: beside its folder, or in the vault's root for a whole-vault wiki, which leaves it out. */
 export function conflictsFolder(folder: string): string {
-	return `${folder} (conflicts)`;
+	return folder ? `${folder} (conflicts)` : "Lichen conflicts";
 }
 
 /** The `n`th candidate for a copy of the file at `path`, of the wiki synced into `folder`. */

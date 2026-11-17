@@ -1,6 +1,6 @@
 // Pulls a public wiki as the plugin does, with the sync state in <dir>/.lichen-sync.json.
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { lichenAppview } from "../src/core/appview.ts";
 import { resolveWiki } from "../src/core/identity.ts";
 import { pullWiki } from "../src/core/pull.ts";
@@ -30,13 +30,14 @@ const vault: Vault = {
 	list: async (folder) => {
 		const entries = await readdir(join(dir, folder), {
 			withFileTypes: true,
+			recursive: true,
 		}).catch((err: NodeJS.ErrnoException) => {
 			if (err.code === "ENOENT") return [];
 			throw err;
 		});
 		return entries
 			.filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-			.map((entry) => `${folder}/${entry.name}`);
+			.map((entry) => relative(dir, join(entry.parentPath, entry.name)));
 	},
 };
 

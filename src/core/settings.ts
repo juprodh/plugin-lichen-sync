@@ -1,11 +1,12 @@
 import { isResourceUri, type ResourceUri } from "@atcute/lexicons/syntax";
 import { parseAtUri } from "@lichen/client/at-uri";
+import { conflictsFolder } from "./filenames.ts";
 import { asRecord, stringField } from "./json.ts";
 
 /** A wiki kept in sync with one vault folder. */
 export interface SyncedWiki {
 	readonly uri: ResourceUri;
-	/** Vault-relative, without leading or trailing slashes. */
+	/** Vault-relative, without leading or trailing slashes; "" is the whole vault. */
 	readonly folder: string;
 	/** The name and owner handle when added, for display: lichen.wiki holds the current ones. */
 	readonly name: string;
@@ -28,12 +29,11 @@ export function parseSettings(data: unknown): Settings {
 		wikis: wikis.flatMap((item: unknown): SyncedWiki[] => {
 			const wiki = asRecord(item);
 			const uri = stringField(wiki, "uri");
-			const folder = normalizeFolder(stringField(wiki, "folder"));
-			if (!isResourceUri(uri) || !folder) return [];
+			if (!isResourceUri(uri) || typeof wiki["folder"] !== "string") return [];
 			return [
 				{
 					uri,
-					folder,
+					folder: normalizeFolder(wiki["folder"]),
 					name: stringField(wiki, "name"),
 					ownerHandle: stringField(wiki, "ownerHandle"),
 					pulledAt: stringField(wiki, "pulledAt"),
@@ -63,7 +63,7 @@ export function normalizeFolder(path: string): string {
 		.join("/");
 }
 
-/** The synced wiki whose folder holds `folder` or sits inside it: every markdown file directly in a folder is one wiki's note. */
+/** The synced wiki whose folder holds `folder` or sits inside it: a file is one wiki's note at most. */
 export function folderClash(
 	folder: string,
 	wikis: readonly SyncedWiki[],
@@ -90,5 +90,18 @@ export function followFolderRename(
 }
 
 export function isWithin(path: string, folder: string): boolean {
-	return path === folder || path.startsWith(`${folder}/`);
+	return folder === "" || path === folder || path.startsWith(`${folder}/`);
+}
+
+/** Whether the markdown file at `path` is a note of the wiki synced into `folder`: any file in it or its subfolders. */
+export function isNotePath(folder: string, path: string): boolean {
+	return (
+		path !== folder &&
+		isWithin(path, folder) &&
+		!isWithin(path, conflictsFolder(folder))
+	);
+}
+
+export function folderLabel(folder: string): string {
+	return folder || "Whole vault";
 }

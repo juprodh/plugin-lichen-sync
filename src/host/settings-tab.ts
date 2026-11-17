@@ -14,6 +14,7 @@ import { getWiki } from "../core/appview.ts";
 import { conflictsFolder } from "../core/filenames.ts";
 import {
 	folderClash,
+	folderLabel,
 	isWithin,
 	type Settings,
 	type SyncedWiki,
@@ -142,7 +143,10 @@ export class SettingsTab extends PluginSettingTab {
 				{
 					type: "group",
 					items: [
-						{ name: "Folder", render: value(() => this.current(wiki).folder) },
+						{
+							name: "Folder",
+							render: value(() => folderLabel(this.current(wiki).folder)),
+						},
 						{
 							name: "Access",
 							render: (setting) => this.renderAccess(setting, wiki),
@@ -198,7 +202,11 @@ export class SettingsTab extends PluginSettingTab {
 							visible: () => this.conflictCopies(wiki).length > 0,
 							action: () => this.openConflicts(wiki),
 						},
-						{ name: "Move folder…", action: () => this.moveWiki(wiki.uri) },
+						{
+							name: "Move folder…",
+							visible: () => this.current(wiki).folder !== "",
+							action: () => this.moveWiki(wiki.uri),
+						},
 					],
 				},
 				{
@@ -207,7 +215,9 @@ export class SettingsTab extends PluginSettingTab {
 					items: [
 						{
 							name: "Stop syncing",
-							desc: `Forgets this wiki. The folder ${wiki.folder} and its files stay.`,
+							desc: wiki.folder
+								? `Forgets this wiki. The folder ${wiki.folder} and its files stay.`
+								: "Forgets this wiki. Your vault's files stay.",
 							action: async (el) => {
 								// The page would stay open on a wiki that is gone; Obsidian has no API to leave it.
 								el.closest(".setting-page")
@@ -274,7 +284,7 @@ export class SettingsTab extends PluginSettingTab {
 				const synced = this.find(choice.uri);
 				if (synced) {
 					new Notice(
-						`Lichen Sync: ${choice.name} already syncs into ${synced.folder}.`,
+						`Lichen Sync: ${choice.name} already syncs into ${synced.folder || "the whole vault"}.`,
 					);
 					return;
 				}
@@ -315,7 +325,7 @@ export class SettingsTab extends PluginSettingTab {
 	private async stopSyncing(wiki: SyncedWiki): Promise<void> {
 		await this.host.removeWiki(wiki.uri);
 		new Notice(
-			`Lichen Sync: stopped syncing ${wiki.name || wikiRef(wiki)}. ${wiki.folder} stays as it is.`,
+			`Lichen Sync: stopped syncing ${wiki.name || wikiRef(wiki)}. ${wiki.folder ? `${wiki.folder} stays as it is` : "Your files stay as they are"}.`,
 		);
 		this.update();
 	}
@@ -332,7 +342,7 @@ export class SettingsTab extends PluginSettingTab {
 
 function clashProblem(clash: SyncedWiki | undefined): string | null {
 	return clash
-		? `${clash.folder} already syncs ${clash.name || wikiRef(clash)}; wiki folders cannot nest.`
+		? `${clash.folder || "The whole vault"} already syncs ${clash.name || wikiRef(clash)}; wiki folders cannot nest.`
 		: null;
 }
 

@@ -1,10 +1,11 @@
-import { type App, SuggestModal, TFile, type TFolder } from "obsidian";
+import { type App, SuggestModal, TFile, TFolder } from "obsidian";
 import { normalizeFolder } from "../core/settings.ts";
 import { renderRow } from "./suggest.ts";
 
 interface FolderItem {
+	/** "" for the whole vault. */
 	readonly path: string;
-	/** Markdown files directly in it; null for a folder to create. */
+	/** Markdown files in it and its subfolders; null for a folder to create. */
 	readonly notes: number | null;
 }
 
@@ -47,6 +48,9 @@ export class FolderPickerModal extends SuggestModal<FolderItem> {
 		if (typed && !typedExists && !this.options.problem(typed)) {
 			items.push({ path: typed, notes: null });
 		}
+		if (this.options.allowExisting && !this.options.problem("")) {
+			items.push({ path: "", notes: markdownFiles(this.app.vault.getRoot()) });
+		}
 		if (this.options.allowExisting) {
 			const needle = typed.toLowerCase();
 			const existing = this.app.vault
@@ -78,15 +82,18 @@ export class FolderPickerModal extends SuggestModal<FolderItem> {
 	}
 
 	override renderSuggestion(item: FolderItem, el: HTMLElement): void {
+		const notes = `${item.notes} note${item.notes === 1 ? "" : "s"}`;
 		renderRow(el, {
 			avatar: null,
-			title: item.path,
+			title: item.path || "Whole vault",
 			note:
 				item.notes === null
 					? "New folder"
-					: item.notes === 0
-						? "Existing folder, no notes in it"
-						: `Existing folder: its ${item.notes} note${item.notes === 1 ? "" : "s"} join the wiki at your next sync, if you can edit it`,
+					: !item.path
+						? `Your vault as this wiki, and no other: its ${notes} join the wiki at your next sync, if you can edit it`
+						: item.notes === 0
+							? "Existing folder, no notes in it"
+							: `Existing folder: its ${notes} join the wiki at your next sync, if you can edit it`,
 		});
 	}
 
@@ -96,7 +103,10 @@ export class FolderPickerModal extends SuggestModal<FolderItem> {
 }
 
 function markdownFiles(folder: TFolder): number {
-	return folder.children.filter(
-		(file) => file instanceof TFile && file.extension === "md",
-	).length;
+	let count = 0;
+	for (const file of folder.children) {
+		if (file instanceof TFolder) count += markdownFiles(file);
+		else if (file instanceof TFile && file.extension === "md") count++;
+	}
+	return count;
 }

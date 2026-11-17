@@ -213,9 +213,7 @@ export function memoryVault(files: Record<string, string> = {}) {
 		list: async (folder) =>
 			[...store.keys()].filter(
 				(path) =>
-					path.startsWith(`${folder}/`) &&
-					path.endsWith(".md") &&
-					!path.slice(folder.length + 1).includes("/"),
+					path.startsWith(folder ? `${folder}/` : "") && path.endsWith(".md"),
 			),
 	};
 	return { vault, files: store };
