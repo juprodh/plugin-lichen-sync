@@ -1,4 +1,4 @@
-import { SIDEBAR_NOTE_SLUG } from "@lichen/client/slug";
+import { SIDEBAR_NOTE_SLUG } from "@lichen-wiki/client/slug";
 import { conflictsFolder } from "./folders.ts";
 
 // sanitizeFilename and deduplicateFilename mirror lichen-repo

@@ -5,15 +5,15 @@ import {
 	type CheckProblem,
 	checkNewNoteTitle,
 	checkRevision,
-} from "@lichen/client/check";
-import { createDiff } from "@lichen/client/diff";
-import { applyCreates, putRecord } from "@lichen/client/pds-write";
+} from "@lichen-wiki/client/check";
+import { createDiff } from "@lichen-wiki/client/diff";
+import { applyCreates, putRecord } from "@lichen-wiki/client/pds-write";
 import {
 	newNoteWrites,
 	type RecordWrite,
 	revisionWrite,
 	snapshotWrite,
-} from "@lichen/client/writes";
+} from "@lichen-wiki/client/writes";
 import { canWrite, getNote, isSlugTaken } from "./appview.ts";
 import { titleFromPath } from "./filenames.ts";
 import { isNotePath } from "./folders.ts";

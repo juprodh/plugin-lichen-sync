@@ -3,7 +3,7 @@ import { BSKY_APPVIEW, bareActor } from "./identity.ts";
 import { asRecord } from "./json.ts";
 
 // The community index lichen.wiki suggests handles from, for the sign-in field: suggestions only, it still takes any handle.
-// Mirrors lichen-repo/src/shared/handle-suggest.ts and avatar.ts until they move into @lichen/client.
+// Mirrors lichen-repo/src/shared/handle-suggest.ts and avatar.ts until they move into @lichen-wiki/client.
 const HANDLE_INDEX = "https://typeahead.waow.tech";
 const ACTOR_LIMIT = 5;
 const TIMEOUT_MS = 2000;

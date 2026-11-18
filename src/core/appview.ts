@@ -11,7 +11,7 @@ import {
 	WikiLichenListNotes,
 	WikiLichenListWikis,
 	WikiLichenSearchWikis,
-} from "@lichen/client/lexicons/index";
+} from "@lichen-wiki/client/lexicons/index";
 
 const LICHEN_APPVIEW = "https://lichen.wiki";
 const PAGE_SIZE = 100;

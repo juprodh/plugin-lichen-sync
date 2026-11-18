@@ -1,5 +1,5 @@
 import { isResourceUri, type ResourceUri } from "@atcute/lexicons/syntax";
-import { parseAtUri } from "@lichen/client/at-uri";
+import { parseAtUri } from "@lichen-wiki/client/at-uri";
 import { isWithin, normalizeFolder } from "./folders.ts";
 import { asRecord, stringField } from "./json.ts";
 

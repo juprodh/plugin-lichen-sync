@@ -1,3 +1,5 @@
 [install]
 auto = "disable"
 minimumReleaseAge = 259200 # 3 days in seconds
+# Our own package, so its new releases install at once.
+minimumReleaseAgeExcludes = ["@lichen-wiki/client"]

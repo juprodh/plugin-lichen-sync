@@ -19,7 +19,7 @@
 		"@atcute/lexicons": "^2.1.1",
 		"@atcute/oauth-node-client": "^2.0.1",
 		"@atcute/tid": "^1.1.4",
-		"@lichen/client": "file:../lichen-repo/packages/client",
+		"@lichen-wiki/client": "^0.1.0",
 		"diff-match-patch": "^1.0.5"
 	},
 	"devDependencies": {

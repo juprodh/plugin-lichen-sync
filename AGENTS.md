@@ -15,7 +15,7 @@ nix develop path:.#obsidian -c scripts/obsidian.sh   # the plugin in a test Obsi
 bun scripts/devtools.ts eval|screenshot|logs         # drive that Obsidian
 ```
 
-`@lichen/client` is `file:../lichen-repo/packages/client`, so it builds against whatever change `lichen-repo` has checked out. Bun copies it into `node_modules` rather than linking it: reinstall after changing it.
+`@lichen-wiki/client` comes from npm, published from `lichen-repo/packages/client`. To try an unpublished change, run `bun link` there and `bun link @lichen-wiki/client` here: the plugin then reads that package's `dist/`, so rerun its `bun run build` after each change. `bun install` brings back the published one.
 
 `scripts/obsidian.sh` runs the Obsidian the flake pins, updates off, on a virtual display, with DevTools on `127.0.0.1:9222`. Its test vault and Obsidian profile are in `~/.local/state/lichen-sync-dev/` (`LICHEN_SYNC_DEV_DIR`), apart from your own vaults. `bun run dev` builds `main.js` into the vault's plugin folder and Hot Reload reloads it. To see and click the window from another machine, forward the port (`ssh -L 9222:127.0.0.1:9222 <host>`) and inspect it from `chrome://inspect`. Sign-in redirects to `127.0.0.1:52741`, so forward that port too and open the URL `scripts/obsidian.sh` logs for it (`bun scripts/devtools.ts logs`) in your own browser.
 
@@ -35,8 +35,8 @@ The host is the app running the plugin: Obsidian, or Reams through its own imple
 
 ## Rules
 
-- Every record rule comes from `@lichen/client`, so the plugin writes what ingest keeps.
-- A synced folder names files as a lichen.wiki export does. `src/core/filenames.ts` mirrors `lichen-repo/src/import-export/filenames.ts` until that moves into `@lichen/client`: change both or neither.
+- Every record rule comes from `@lichen-wiki/client`, so the plugin writes what ingest keeps.
+- A synced folder names files as a lichen.wiki export does. `src/core/filenames.ts` mirrors `lichen-repo/src/import-export/filenames.ts` until that moves into `@lichen-wiki/client`: change both or neither.
 - A pull never loses a local edit: it merges the remote change in, and when the two overlap it writes the local text to a copy in `<wiki> (conflicts)/`. Merging matches exact context only.
 - Every markdown file in a wiki's folder or its subfolders is a note, so a push creates a note from a new one; nothing else the plugin writes goes there. A whole-vault wiki keeps its conflict copies in `Lichen conflicts/`, which it leaves out.
 - A renamed file stays its note: the plugin follows vault renames, and a push creates no note while a synced file is missing.

@@ -6,8 +6,8 @@ import {
 	isHandle,
 	type ResourceUri,
 } from "@atcute/lexicons/syntax";
-import { formatAtUri } from "@lichen/client/at-uri";
-import { COLLECTIONS } from "@lichen/client/collections";
+import { formatAtUri } from "@lichen-wiki/client/at-uri";
+import { COLLECTIONS } from "@lichen-wiki/client/collections";
 
 // Resolves handles with CORS headers, which a handle's own /.well-known/atproto-did often lacks, and serves profiles.
 export const BSKY_APPVIEW = "https://public.api.bsky.app";

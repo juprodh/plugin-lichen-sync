@@ -1,11 +1,11 @@
 import { Client } from "@atcute/client";
 import * as v from "@atcute/lexicons/validations";
-import { applyDiff } from "@lichen/client/diff";
+import { applyDiff } from "@lichen-wiki/client/diff";
 import {
 	WikiLichenNote,
 	WikiLichenNoteRevision,
 	WikiLichenNoteSnapshot,
-} from "@lichen/client/lexicons/index";
+} from "@lichen-wiki/client/lexicons/index";
 import type { Vault } from "../../src/core/vault.ts";
 
 export const OWNER = "did:plc:owner";

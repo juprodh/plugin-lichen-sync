@@ -1,4 +1,4 @@
-import type { CheckProblem } from "@lichen/client/check";
+import type { CheckProblem } from "@lichen-wiki/client/check";
 import { plural } from "./plural.ts";
 import type { PullReport } from "./pull.ts";
 import type { PushReport } from "./push.ts";
