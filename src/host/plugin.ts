@@ -29,6 +29,7 @@ import {
 } from "../core/sync-state.ts";
 import type { Vault } from "../core/vault.ts";
 import type { WikiChoice } from "../core/wiki-search.ts";
+import { type AddWikiHost, openAddWiki } from "./add-wiki.ts";
 import { addLichenIcon, LICHEN_ICON } from "./icon.ts";
 import { type CallbackListener, listenForCallback } from "./loopback.ts";
 import { SettingsTab } from "./settings-tab.ts";
@@ -46,24 +47,27 @@ export class LichenSyncPlugin extends Plugin {
 		get: () => this.data.sessions,
 		save: (sessions) => this.save({ ...this.data, sessions }),
 	});
+	private readonly wikiHost: AddWikiHost = {
+		appview: this.appview,
+		settings: () => this.data.settings,
+		signedIn: () => signedInDid(this.data.sessions),
+		signIn: (account) => this.signIn(account),
+		addWiki: (wiki, folder) => this.addWiki(wiki, folder),
+	};
+	private settingsTab: SettingsTab | null = null;
 
 	override async onload(): Promise<void> {
 		this.data = parsePluginData(await this.loadData());
 		this.register(() => this.stopSignIn());
-		this.addSettingTab(
-			new SettingsTab(this.app, this, {
-				appview: this.appview,
-				settings: () => this.data.settings,
-				signedIn: () => signedInDid(this.data.sessions),
-				signIn: (account) => this.signIn(account),
-				signOut: () => this.signOut(),
-				addWiki: (wiki, folder) => this.addWiki(wiki, folder),
-				removeWiki: (uri) => this.removeWiki(uri),
-				moveWiki: (uri, folder) => this.moveWiki(uri, folder),
-				syncWiki: (uri) => this.sync([uri]),
-				syncing: () => this.syncing,
-			}),
-		);
+		this.settingsTab = new SettingsTab(this.app, this, {
+			...this.wikiHost,
+			signOut: () => this.signOut(),
+			removeWiki: (uri) => this.removeWiki(uri),
+			moveWiki: (uri, folder) => this.moveWiki(uri, folder),
+			syncWiki: (uri) => this.sync([uri]),
+			syncing: () => this.syncing,
+		});
+		this.addSettingTab(this.settingsTab);
 		this.addCommand({
 			id: "sync",
 			name: "Sync all wikis",
@@ -255,7 +259,17 @@ export class LichenSyncPlugin extends Plugin {
 		}
 		menu.addItem((item) =>
 			item
-				.setTitle(wikis.length > 0 ? "Settings" : "Add a wiki")
+				.setTitle("Add a wiki…")
+				.setIcon("plus")
+				.onClick(() =>
+					openAddWiki(this.app, this.wikiHost, () =>
+						this.settingsTab?.update(),
+					),
+				),
+		);
+		menu.addItem((item) =>
+			item
+				.setTitle("Settings")
 				.setIcon("settings")
 				.onClick(() => this.openSettings()),
 		);

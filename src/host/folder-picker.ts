@@ -98,7 +98,7 @@ export class FolderPickerModal extends SuggestModal<FolderItem> {
 
 function folderNote({ path, notes }: FolderItem): string {
 	if (notes === null) return "New folder";
-	const joining = `its ${notes} ${plural("note", notes)} join the wiki at your next sync, if you can edit it`;
+	const joining = `its ${notes} ${plural("note", notes)} join the wiki when you add it, if you can edit it`;
 	if (!path) return `Your vault as this wiki, and no other: ${joining}`;
 	return notes === 0
 		? "Existing folder, no notes in it"

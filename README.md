@@ -4,8 +4,8 @@ Syncs the notes of [Lichen](https://lichen.wiki) wikis with folders of your Obsi
 
 ## Use
 
-1. Open **Settings → Lichen Sync** and choose **Add wiki**. Search Lichen's public wikis, or paste a lichen.wiki link.
-2. Pick the folder the wiki syncs into, or your whole vault. Its notes come in right away.
+1. Click the Lichen icon in the ribbon and choose **Add a wiki…**, or choose **Add wiki** in **Settings → Lichen Sync**. Search Lichen's public wikis, or paste a lichen.wiki link.
+2. Pick the folder the wiki syncs into, or your whole vault. Its notes come in right away. If the folder already holds notes and you can edit the wiki, Lichen Sync asks before sending them to it.
 3. Click the Lichen icon in the ribbon to sync all wikis or one of them, or run **Lichen Sync: Sync all wikis** from the command palette.
 
 Syncing a public wiki needs no account. To send your edits to a wiki you write in, sign in with your Bluesky or atproto handle: the sign-in opens in your browser. A sync first merges what changed on lichen.wiki into your files, then sends your edits. Edits that overlap a change on lichen.wiki are kept in a copy in `<wiki> (conflicts)/` rather than overwritten, and the wiki's page in settings flags them until you delete the copy.

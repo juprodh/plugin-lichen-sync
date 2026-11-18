@@ -1,5 +1,4 @@
-import type { Client } from "@atcute/client";
-import type { Did, ResourceUri } from "@atcute/lexicons/syntax";
+import type { ResourceUri } from "@atcute/lexicons/syntax";
 import {
 	type App,
 	Notice,
@@ -11,35 +10,24 @@ import {
 	TFile,
 } from "obsidian";
 import { getWiki } from "../core/appview.ts";
-import {
-	conflictsFolder,
-	folderLabel,
-	folderName,
-	isWithin,
-} from "../core/folders.ts";
+import { conflictsFolder, folderLabel, isWithin } from "../core/folders.ts";
 import { getProfile } from "../core/handle-suggest.ts";
 import {
 	findWiki,
 	folderClash,
-	type Settings,
 	type SyncedWiki,
 	wikiLabel,
 	wikiRef,
 	wikiSlug,
 } from "../core/settings.ts";
-import type { WikiChoice } from "../core/wiki-search.ts";
+import { type AddWikiHost, clashProblem, openAddWiki } from "./add-wiki.ts";
+import { confirm } from "./confirm.ts";
 import { FolderPickerModal } from "./folder-picker.ts";
 import { ActorSuggest } from "./handle-suggest.ts";
-import { WikiPickerModal } from "./wiki-picker.ts";
 
 /** What the tab asks of the plugin, which owns data.json. */
-interface SettingsHost {
-	readonly appview: Client;
-	settings(): Settings;
-	signedIn(): Did | undefined;
-	signIn(account: string): Promise<void>;
+interface SettingsHost extends AddWikiHost {
 	signOut(): Promise<void>;
-	addWiki(wiki: WikiChoice, folder: string): Promise<void>;
 	removeWiki(uri: ResourceUri): Promise<void>;
 	moveWiki(uri: ResourceUri, folder: string): Promise<void>;
 	syncWiki(uri: ResourceUri): Promise<void>;
@@ -71,7 +59,14 @@ export class SettingsTab extends PluginSettingTab {
 				heading: "Wikis",
 				cls: "lichen-sync-wikis",
 				emptyState: "No wikis yet. Add one to sync its notes into a folder.",
-				addItem: { name: "Add wiki", action: () => this.addWiki() },
+				addItem: {
+					name: "Add wiki",
+					action: () => openAddWiki(this.app, this.host, () => this.update()),
+				},
+				onDelete: (index) => {
+					const wiki = wikis[index];
+					if (wiki) void this.stopSyncing(this.current(wiki));
+				},
 				items: wikis.map((wiki) => this.wikiPage(wiki)),
 			},
 		];
@@ -225,11 +220,11 @@ export class SettingsTab extends PluginSettingTab {
 								? "Forgets this wiki. Its folder and files stay."
 								: "Forgets this wiki. Your vault's files stay.",
 							action: async (el) => {
-								// The page would stay open on a wiki that is gone; Obsidian has no API to leave it.
-								el.closest(".setting-page")
-									?.querySelector<HTMLElement>(".setting-page-back-button")
-									?.click();
-								await this.stopSyncing(this.current(wiki));
+								// Obsidian has no API to leave a page, which would stay open and empty.
+								const back = el
+									.closest(".setting-page")
+									?.querySelector<HTMLElement>(".setting-page-back-button");
+								if (await this.stopSyncing(this.current(wiki))) back?.click();
 							},
 						},
 					],
@@ -275,40 +270,6 @@ export class SettingsTab extends PluginSettingTab {
 		}
 	}
 
-	private addWiki(): void {
-		new WikiPickerModal(this.app, {
-			appview: this.host.appview,
-			account: this.host.signedIn(),
-			syncedFolder: (uri) => this.find(uri)?.folder,
-			onSignIn: async (handle) => {
-				await this.host.signIn(handle);
-				this.update();
-				// Back to the picker, now listing your wikis.
-				if (this.host.signedIn()) this.addWiki();
-			},
-			onPick: (choice) => {
-				const synced = this.find(choice.uri);
-				if (synced) {
-					new Notice(
-						`Lichen Sync: ${choice.name} already syncs into ${folderName(synced.folder)}.`,
-					);
-					return;
-				}
-				const { wikis } = this.host.settings();
-				new FolderPickerModal(this.app, {
-					placeholder: `Folder for ${choice.name}`,
-					initial: choice.slug,
-					allowExisting: true,
-					problem: (folder) => clashProblem(folderClash(folder, wikis)),
-					onPick: async (folder) => {
-						await this.host.addWiki(choice, folder);
-						this.update();
-					},
-				}).open();
-			},
-		}).open();
-	}
-
 	private moveWiki(uri: ResourceUri): void {
 		const wiki = this.find(uri);
 		if (!wiki) return;
@@ -328,12 +289,21 @@ export class SettingsTab extends PluginSettingTab {
 		}).open();
 	}
 
-	private async stopSyncing(wiki: SyncedWiki): Promise<void> {
+	/** Whether the user confirmed, and the wiki stopped syncing. */
+	private async stopSyncing(wiki: SyncedWiki): Promise<boolean> {
+		const stop = await confirm(this.app, {
+			title: `Stop syncing “${wikiLabel(wiki)}”?`,
+			message: `${wiki.folder ? `${wiki.folder} and its files stay` : "Your vault's files stay"} as they are. Syncing the wiki again later starts over: files that differ from lichen.wiki are set aside as conflict copies.`,
+			action: "Stop syncing",
+			warning: true,
+		});
+		if (!stop) return false;
 		await this.host.removeWiki(wiki.uri);
 		new Notice(
 			`Lichen Sync: stopped syncing ${wikiLabel(wiki)}. ${wiki.folder ? `${wiki.folder} stays as it is` : "Your files stay as they are"}.`,
 		);
 		this.update();
+		return true;
 	}
 
 	private find(uri: ResourceUri): SyncedWiki | undefined {
@@ -344,12 +314,6 @@ export class SettingsTab extends PluginSettingTab {
 	private current(wiki: SyncedWiki): SyncedWiki {
 		return this.find(wiki.uri) ?? wiki;
 	}
-}
-
-function clashProblem(clash: SyncedWiki | undefined): string | null {
-	return clash
-		? `${wikiLabel(clash)} already syncs into ${folderName(clash.folder)}; wiki folders cannot nest.`
-		: null;
 }
 
 function lastSyncLabel(wiki: SyncedWiki): string {
