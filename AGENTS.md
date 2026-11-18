@@ -17,6 +17,8 @@ bun scripts/devtools.ts eval|screenshot|logs         # drive that Obsidian
 
 `bun run lint` runs Biome, then ESLint with `eslint-plugin-obsidianmd`, the rules Obsidian's review checks a submission against, on `src/` and the root files, warnings included. Update that plugin before a release, since the review runs its latest version. TypeScript stays on 6 until `typescript-eslint` supports 7.
 
+To release, raise `version` in `manifest.json` (`x.y.z`, no `v`) and push `main` to tangled. Once its checks pass, CI pushes `main` to the GitHub mirror, which Obsidian reads, and creates that version's GitHub release from the commit, with `main.js`, `manifest.json` and `styles.css`. It reaches GitHub with the `GH_TOKEN` pipeline secret, set in the repo's settings on tangled.
+
 `@lichen-wiki/client` comes from npm, published from `lichen-repo/packages/client`. To try an unpublished change, run `bun link` there and `bun link @lichen-wiki/client` here: the plugin then reads that package's `dist/`, so rerun its `bun run build` after each change. `bun install` brings back the published one.
 
 `scripts/obsidian.sh` runs the Obsidian the flake pins, updates off, on a virtual display, with DevTools on `127.0.0.1:9222`. Its test vault and Obsidian profile are in `~/.local/state/lichen-sync-dev/` (`LICHEN_SYNC_DEV_DIR`), apart from your own vaults. `bun run dev` builds `main.js` into the vault's plugin folder and Hot Reload reloads it. To see and click the window from another machine, forward the port (`ssh -L 9222:127.0.0.1:9222 <host>`) and inspect it from `chrome://inspect`. Sign-in redirects to `127.0.0.1:52741`, so forward that port too and open the URL `scripts/obsidian.sh` logs for it (`bun scripts/devtools.ts logs`) in your own browser.

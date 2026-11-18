@@ -4,10 +4,21 @@ when:
 
 engine: "nixery"
 
+# Enough history for GitHub to take a push of several commits at once
+clone:
+  depth: 50
+
 dependencies:
   # The dev shell's Bun pin, read from the default branch's flake rather than the commit under test
   git+https://tangled.org/juprodh.me/plugin-lichen-sync:
     - bun
+  nixpkgs:
+    - gh
+    - git
+    - jq
+
+environment:
+  GITHUB_REPO: "juprodh/plugin-lichen-sync"
 
 steps:
   - name: "Install dependencies"
@@ -26,3 +37,20 @@ steps:
     command: "bun test"
   - name: "Build"
     command: "bun run build"
+  # GH_TOKEN is a pipeline secret: a fine-grained GitHub token for this repository only, with Contents read and write.
+  - name: "Mirror main to GitHub"
+    command: |
+      set -euo pipefail
+      if [ "$TANGLED_PIPELINE_KIND" = pull_request ] || [ "${TANGLED_REF_NAME:-}" != main ]; then exit 0; fi
+      # gh hands git the token, so it stays out of the URL and any error that prints it
+      gh auth setup-git
+      git push "https://github.com/${GITHUB_REPO}.git" "${TANGLED_SHA}:refs/heads/main"
+  # Obsidian installs from GitHub releases, whose tag must equal manifest.json's version.
+  - name: "Release a new version on GitHub"
+    command: |
+      set -euo pipefail
+      if [ "$TANGLED_PIPELINE_KIND" = pull_request ] || [ "${TANGLED_REF_NAME:-}" != main ]; then exit 0; fi
+      version=$(jq -r .version manifest.json)
+      if gh release view "$version" --repo "$GITHUB_REPO" > /dev/null 2>&1; then exit 0; fi
+      gh release create "$version" main.js manifest.json styles.css \
+        --repo "$GITHUB_REPO" --target "$TANGLED_SHA" --title "$version" --generate-notes
