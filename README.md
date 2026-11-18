@@ -4,6 +4,8 @@ Edit your [Lichen](https://lichen.wiki) wikis from Obsidian. Each wiki is a fold
 
 ## Use
 
+Install it from Obsidian's community plugins: <https://community.obsidian.md/plugins/lichen-sync>.
+
 1. Click the Lichen icon in the ribbon, choose **Add a wiki…**, then search for a wiki or paste its lichen.wiki link.
 2. Pick a folder for it, or your whole vault. Its notes come in right away.
 3. Click the Lichen icon again to sync, or run **Lichen Sync: Sync all wikis**.
