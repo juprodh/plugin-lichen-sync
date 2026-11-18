@@ -33,6 +33,7 @@ import { type AddWikiHost, openAddWiki } from "./add-wiki.ts";
 import { addLichenIcon, LICHEN_ICON } from "./icon.ts";
 import { type CallbackListener, listenForCallback } from "./loopback.ts";
 import { SettingsTab } from "./settings-tab.ts";
+import { sleep } from "./sleep.ts";
 import { hostVault } from "./vault.ts";
 
 export class LichenSyncPlugin extends Plugin {
@@ -338,7 +339,9 @@ export class LichenSyncPlugin extends Plugin {
 				const result = await this.followingRenames(
 					uri,
 					(vault, folder, known) =>
-						pushWiki(this.appview, pds, did, vault, uri, folder, known),
+						pushWiki(this.appview, pds, did, vault, uri, folder, known, {
+							sleep,
+						}),
 				);
 				if (result) {
 					await this.saveSync(uri, result.state);

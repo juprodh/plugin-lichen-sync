@@ -18,6 +18,9 @@
       };
     in
     {
+      # CI's Bun (.tangled/workflows/ci.yml)
+      packages.${system}.bun = pkgs.bun;
+
       devShells.${system} = {
         default = pkgs.mkShell {
           packages = [ pkgs.bun ];

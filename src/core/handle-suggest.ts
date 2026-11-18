@@ -6,7 +6,6 @@ import { asRecord } from "./json.ts";
 // Mirrors lichen-repo/src/shared/handle-suggest.ts and avatar.ts until they move into @lichen-wiki/client.
 const HANDLE_INDEX = "https://typeahead.waow.tech";
 const ACTOR_LIMIT = 5;
-const TIMEOUT_MS = 2000;
 
 export interface Actor {
 	readonly did: Did;
@@ -24,26 +23,27 @@ export function actorQuery(value: string): string | null {
 	return query;
 }
 
-export async function searchActors(query: string): Promise<Actor[]> {
+/** The host's JSON GET: Obsidian's requestUrl in the plugin. */
+export type GetJson = (url: string) => Promise<unknown>;
+
+export async function searchActors(
+	getJson: GetJson,
+	query: string,
+): Promise<Actor[]> {
 	const body = await getJson(
 		`${HANDLE_INDEX}/xrpc/tech.waow.typeahead.searchActors?q=${encodeURIComponent(query)}&limit=${ACTOR_LIMIT}`,
 	);
-	return parseActors(body["actors"]).slice(0, ACTOR_LIMIT);
+	return parseActors(asRecord(body)["actors"]).slice(0, ACTOR_LIMIT);
 }
 
-export async function getProfile(did: Did): Promise<Actor | null> {
+export async function getProfile(
+	getJson: GetJson,
+	did: Did,
+): Promise<Actor | null> {
 	const body = await getJson(
 		`${BSKY_APPVIEW}/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(did)}`,
 	);
 	return parseActors([body])[0] ?? null;
-}
-
-async function getJson(url: string): Promise<Record<string, unknown>> {
-	const res = await fetch(url, {
-		signal: AbortSignal.timeout(TIMEOUT_MS),
-		headers: { "X-Client": "lichen-sync" },
-	});
-	return res.ok ? asRecord(await res.json()) : {};
 }
 
 /**

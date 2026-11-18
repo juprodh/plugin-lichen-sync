@@ -1,0 +1,28 @@
+when:
+  - event: ["push", "pull_request", "manual"]
+    branch: ["main"]
+
+engine: "nixery"
+
+dependencies:
+  # The dev shell's Bun pin, read from the default branch's flake rather than the commit under test
+  git+https://tangled.org/juprodh.me/plugin-lichen-sync:
+    - bun
+
+steps:
+  - name: "Install dependencies"
+    # Every libc's build, so the musl Biome below is installed on this glibc image
+    command: "bun install --frozen-lockfile --libc='*'"
+  - name: "Lint, format, and Obsidian's review rules"
+    command: "bun run lint"
+    environment:
+      # The static musl build: the glibc one needs a /lib64 loader the nixery image lacks
+      BIOME_BINARY: "@biomejs/cli-linux-x64-musl/biome"
+  - name: "Type check"
+    command: "bun run typecheck"
+  - name: "Dead code check"
+    command: "bun run knip"
+  - name: "Unit tests"
+    command: "bun test"
+  - name: "Build"
+    command: "bun run build"

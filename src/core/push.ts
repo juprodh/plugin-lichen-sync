@@ -25,7 +25,8 @@ type HeadOutcome = "accepted" | "lost" | "timeout";
 interface WaitOptions {
 	readonly attempts?: number;
 	readonly intervalMs?: number;
-	readonly sleep?: (ms: number) => Promise<void>;
+	/** The host's timer: core/ also runs where there is no window. */
+	readonly sleep: (ms: number) => Promise<void>;
 }
 
 /** Polls until the appview names `revision` the head; `parent` is null for a new note. */
@@ -34,11 +35,7 @@ async function waitForHead(
 	uri: ResourceUri,
 	revision: string,
 	parent: string | null,
-	{
-		attempts = 15,
-		intervalMs = 1000,
-		sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-	}: WaitOptions = {},
+	{ attempts = 15, intervalMs = 1000, sleep }: WaitOptions,
 ): Promise<HeadOutcome> {
 	for (let attempt = 0; attempt < attempts; attempt++) {
 		if (attempt > 0) await sleep(intervalMs);
@@ -76,7 +73,7 @@ interface PushRun {
 	readonly pds: Client;
 	readonly author: Did;
 	readonly wiki: ResourceUri;
-	readonly wait: WaitOptions | undefined;
+	readonly wait: WaitOptions;
 	readonly state: Record<string, SyncedNote>;
 	/** Slugs this run created notes for: two files in different subfolders can share a name. */
 	readonly slugs: Set<string>;
@@ -95,7 +92,7 @@ export async function pushWiki(
 	wiki: ResourceUri,
 	folder: string,
 	known: WikiState,
-	wait?: WaitOptions,
+	wait: WaitOptions,
 ): Promise<{ state: WikiState; report: PushReport }> {
 	if (!(await canWrite(appview, wiki, author))) {
 		throw new Error(`${author} cannot edit ${wiki}`);

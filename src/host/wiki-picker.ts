@@ -7,11 +7,7 @@ import {
 import { type App, SuggestModal } from "obsidian";
 import { debounced } from "../core/debounce.ts";
 import { folderName } from "../core/folders.ts";
-import {
-	type Actor,
-	actorQuery,
-	searchActors,
-} from "../core/handle-suggest.ts";
+import { type Actor, actorQuery } from "../core/handle-suggest.ts";
 import { bareActor, resolveOwner } from "../core/identity.ts";
 import { plural } from "../core/plural.ts";
 import {
@@ -24,7 +20,8 @@ import {
 	wikisOf,
 	yourWikis,
 } from "../core/wiki-search.ts";
-import { DEBOUNCE_MS, renderActor } from "./handle-suggest.ts";
+import { DEBOUNCE_MS, findActors, renderActor } from "./handle-suggest.ts";
+import { sleep } from "./sleep.ts";
 import { renderRow } from "./suggestion-row.ts";
 
 type PickerItem =
@@ -56,7 +53,7 @@ export class WikiPickerModal extends SuggestModal<PickerItem> {
 	private readonly find = debounced(
 		(query: string) =>
 			this.signingIn ? this.findAccount(query) : this.findWiki(query),
-		DEBOUNCE_MS,
+		() => sleep(DEBOUNCE_MS),
 	);
 
 	constructor(
@@ -161,7 +158,7 @@ export class WikiPickerModal extends SuggestModal<PickerItem> {
 	private async findAccount(query: string): Promise<PickerItem[]> {
 		const typed = bareActor(query);
 		const people = actorQuery(query);
-		const actors = people ? await searchActors(people).catch(() => []) : [];
+		const actors = people ? await findActors(people).catch(() => []) : [];
 		const items: PickerItem[] = actors.map((actor) => ({
 			kind: "account",
 			actor,

@@ -6,7 +6,7 @@ interface Confirmation {
 	/** The button that goes ahead. */
 	readonly action: string;
 	/** Styles the action as one that forgets or loses something. */
-	readonly warning?: boolean;
+	readonly destructive?: boolean;
 }
 
 /** Whether the user went ahead; closing the dialog any other way cancels. */
@@ -31,7 +31,7 @@ class ConfirmModal extends Modal {
 	}
 
 	override onOpen(): void {
-		const { title, message, action, warning } = this.confirmation;
+		const { title, message, action, destructive } = this.confirmation;
 		this.setTitle(title);
 		this.contentEl.createEl("p", { text: message });
 		new Setting(this.contentEl)
@@ -43,8 +43,8 @@ class ConfirmModal extends Modal {
 					this.confirmed = true;
 					this.close();
 				});
-				if (warning) button.setWarning();
-				else button.setCta();
+				if (destructive) button.setDestructive();
+				button.setCta();
 			});
 	}
 

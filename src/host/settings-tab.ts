@@ -11,7 +11,6 @@ import {
 } from "obsidian";
 import { getWiki } from "../core/appview.ts";
 import { conflictsFolder, folderLabel, isWithin } from "../core/folders.ts";
-import { getProfile } from "../core/handle-suggest.ts";
 import {
 	findWiki,
 	folderClash,
@@ -23,7 +22,7 @@ import {
 import { type AddWikiHost, clashProblem, openAddWiki } from "./add-wiki.ts";
 import { confirm } from "./confirm.ts";
 import { FolderPickerModal } from "./folder-picker.ts";
-import { ActorSuggest } from "./handle-suggest.ts";
+import { ActorSuggest, findProfile } from "./handle-suggest.ts";
 
 /** What the tab asks of the plugin, which owns data.json. */
 interface SettingsHost extends AddWikiHost {
@@ -85,7 +84,7 @@ export class SettingsTab extends PluginSettingTab {
 					}),
 				);
 			setting.nameEl.addClass("lichen-sync-account");
-			void getProfile(did)
+			void findProfile(did)
 				.then((profile) => {
 					if (!profile) return;
 					setting.setName(`@${profile.handle}`);
@@ -193,17 +192,12 @@ export class SettingsTab extends PluginSettingTab {
 						{
 							name: "Sync now",
 							disabled: () => this.host.syncing(),
-							action: async () => {
-								const sync = this.host.syncWiki(wiki.uri);
-								this.update();
-								await sync;
-								this.update();
-							},
+							action: () => void this.syncNow(wiki.uri),
 						},
 						{
 							name: "Review conflicts",
 							visible: () => this.conflictCopies(wiki).length > 0,
-							action: () => this.openConflicts(wiki),
+							action: () => void this.openConflicts(wiki),
 						},
 						{
 							name: "Move folder…",
@@ -221,13 +215,7 @@ export class SettingsTab extends PluginSettingTab {
 							desc: wiki.folder
 								? "Forgets this wiki. Its folder and files stay."
 								: "Forgets this wiki. Your vault's files stay.",
-							action: async (el) => {
-								// Obsidian has no API to leave a page, which would stay open and empty.
-								const back = el
-									.closest(".setting-page")
-									?.querySelector<HTMLElement>(".setting-page-back-button");
-								if (await this.stopSyncing(this.current(wiki))) back?.click();
-							},
+							action: (el) => void this.stopSyncingFromPage(el, wiki),
 						},
 					],
 				},
@@ -255,6 +243,24 @@ export class SettingsTab extends PluginSettingTab {
 				})
 				.catch(() => display.setValue("Could not reach lichen.wiki"));
 		});
+	}
+
+	private async syncNow(uri: ResourceUri): Promise<void> {
+		const sync = this.host.syncWiki(uri);
+		this.update();
+		await sync;
+		this.update();
+	}
+
+	private async stopSyncingFromPage(
+		el: HTMLElement,
+		wiki: SyncedWiki,
+	): Promise<void> {
+		// Obsidian has no API to leave a page, which would stay open and empty.
+		const back = el
+			.closest(".setting-page")
+			?.querySelector<HTMLElement>(".setting-page-back-button");
+		if (await this.stopSyncing(this.current(wiki))) back?.click();
 	}
 
 	private conflictCopies(wiki: SyncedWiki): TFile[] {
@@ -297,7 +303,7 @@ export class SettingsTab extends PluginSettingTab {
 			title: `Stop syncing “${wikiLabel(wiki)}”?`,
 			message: `${wiki.folder ? `${wiki.folder} and its files stay` : "Your vault's files stay"} as they are. Syncing the wiki again later starts over: files that differ from lichen.wiki are set aside as conflict copies.`,
 			action: "Stop syncing",
-			warning: true,
+			destructive: true,
 		});
 		if (!stop) return false;
 		await this.host.removeWiki(wiki.uri);

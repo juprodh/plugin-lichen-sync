@@ -18,7 +18,7 @@ interface FolderPickerOptions {
 	readonly allowExisting: boolean;
 	/** Why a folder cannot be picked, or null. */
 	problem(folder: string): string | null;
-	onPick(folder: string): void;
+	onPick(folder: string): Promise<void>;
 }
 
 const FOLDER_LIMIT = 8;
@@ -36,8 +36,8 @@ export class FolderPickerModal extends SuggestModal<FolderItem> {
 		]);
 	}
 
-	override onOpen(): void {
-		super.onOpen();
+	override async onOpen(): Promise<void> {
+		await super.onOpen();
 		this.inputEl.value = this.options.initial;
 		this.inputEl.select();
 		this.inputEl.dispatchEvent(new Event("input"));
@@ -92,7 +92,7 @@ export class FolderPickerModal extends SuggestModal<FolderItem> {
 	}
 
 	override onChooseSuggestion(item: FolderItem): void {
-		this.options.onPick(item.path);
+		void this.options.onPick(item.path);
 	}
 }
 

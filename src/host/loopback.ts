@@ -60,19 +60,19 @@ export async function listenForCallback(): Promise<CallbackListener> {
 		resolve(url.searchParams);
 		close();
 	});
-	const timer = setTimeout(() => {
+	const timer = window.setTimeout(() => {
 		reject(new Error("Sign-in timed out."));
 		close();
 	}, CALLBACK_TIMEOUT_MS);
 	function close() {
-		clearTimeout(timer);
+		window.clearTimeout(timer);
 		server.close();
 		reject(new Error("Sign-in cancelled."));
 	}
 
 	await new Promise<void>((listening, failed) => {
 		server.once("error", (err) => {
-			clearTimeout(timer);
+			window.clearTimeout(timer);
 			failed(
 				new Error(
 					`Port ${LOOPBACK_PORT} is unavailable for the sign-in callback: ${err.message}`,
