@@ -10,7 +10,7 @@ Syncs the notes of [Lichen](https://lichen.wiki) wikis with folders of your Obsi
 
 Syncing a public wiki needs no account. To send your edits to a wiki you write in, sign in with your Bluesky or atproto handle: the sign-in opens in your browser. A sync first merges what changed on lichen.wiki into your files, then sends your edits. Edits that overlap a change on lichen.wiki are kept in a copy in `<wiki> (conflicts)/` rather than overwritten, and the wiki's page in settings flags them until you delete the copy.
 
-A new markdown file in a wiki's folder, or in one of its subfolders, becomes a new note named by its filename. A wiki that takes the whole vault is its only wiki, and keeps its conflict copies in `Lichen conflicts/`. Moving or renaming a wiki's folder in Obsidian takes the wiki along. Stopping a wiki's sync leaves its folder and files as they are.
+A new markdown file in a wiki's folder, or in one of its subfolders, becomes a new note named by its filename. A wiki that takes the whole vault is its only wiki, and keeps its conflict copies in `Lichen conflicts/`. Moving or renaming a wiki's folder in Obsidian takes the wiki and its conflict copies along. Stopping a wiki's sync leaves its folder and files as they are.
 
 ## Network use
 

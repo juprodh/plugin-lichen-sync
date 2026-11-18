@@ -6,12 +6,13 @@ import {
 } from "@atcute/lexicons/syntax";
 import { Menu, Notice, Plugin, TFile, TFolder } from "obsidian";
 import { canWrite, lichenAppview } from "../core/appview.ts";
-import { isNotePath } from "../core/folders.ts";
+import { conflictsFolder, isNotePath } from "../core/folders.ts";
 import { bareActor } from "../core/identity.ts";
 import { lichenOAuth, signedInDid } from "../core/oauth.ts";
 import { type PluginData, parsePluginData } from "../core/plugin-data.ts";
 import { pullWiki } from "../core/pull.ts";
 import { type PushReport, pushWiki } from "../core/push.ts";
+import { RenameLog } from "../core/renames.ts";
 import { describeSync } from "../core/report.ts";
 import {
 	findWiki,
@@ -26,6 +27,7 @@ import {
 	type SyncState,
 	type WikiState,
 } from "../core/sync-state.ts";
+import type { Vault } from "../core/vault.ts";
 import type { WikiChoice } from "../core/wiki-search.ts";
 import { addLichenIcon, LICHEN_ICON } from "./icon.ts";
 import { type CallbackListener, listenForCallback } from "./loopback.ts";
@@ -37,6 +39,8 @@ export class LichenSyncPlugin extends Plugin {
 	private syncing = false;
 	private ribbon: HTMLElement | null = null;
 	private signInListener: CallbackListener | null = null;
+	/** One per side of a sync in progress. */
+	private readonly renameLogs = new Set<RenameLog>();
 	private readonly appview = lichenAppview();
 	private readonly oauth = lichenOAuth({
 		get: () => this.data.sessions,
@@ -71,6 +75,7 @@ export class LichenSyncPlugin extends Plugin {
 		);
 		this.registerEvent(
 			this.app.vault.on("rename", (file, oldPath) => {
+				for (const log of this.renameLogs) log.record(oldPath, file.path);
 				if (file instanceof TFolder) {
 					void this.followFolder(oldPath, file.path);
 				} else if (file instanceof TFile) {
@@ -102,6 +107,21 @@ export class LichenSyncPlugin extends Plugin {
 			settings: { ...this.data.settings, wikis: moved },
 			sync: sync ?? this.data.sync,
 		});
+		if (wikis.some((wiki) => wiki.folder === from)) {
+			await this.moveConflictCopies(from, to);
+		}
+	}
+
+	// Conflict copies sit beside the wiki's folder rather than in it, so they follow it here.
+	private async moveConflictCopies(from: string, to: string): Promise<void> {
+		const copies = this.app.vault.getFolderByPath(conflictsFolder(from));
+		const target = conflictsFolder(to);
+		if (!copies || this.app.vault.getAbstractFileByPath(target)) return;
+		try {
+			await this.app.fileManager.renameFile(copies, target);
+		} catch (err) {
+			new Notice(`Lichen Sync: moving ${copies.path} failed. ${reasonOf(err)}`);
+		}
 	}
 
 	private async addWiki(choice: WikiChoice, folder: string): Promise<void> {
@@ -289,13 +309,10 @@ export class LichenSyncPlugin extends Plugin {
 		if (!wiki) return;
 		const label = wikiLabel(wiki);
 		try {
-			const pulled = await pullWiki(
-				this.appview,
-				hostVault(this.app),
-				uri,
-				wiki.folder,
-				this.data.sync[uri] ?? {},
+			const pulled = await this.followingRenames(uri, (vault, folder, known) =>
+				pullWiki(this.appview, vault, uri, folder, known),
 			);
+			if (!pulled) return;
 			await this.saveSync(uri, pulled.state, new Date().toISOString());
 			let pushed: PushReport | null = null;
 			const did = signedInDid(this.data.sessions);
@@ -304,21 +321,49 @@ export class LichenSyncPlugin extends Plugin {
 					? await author(did)
 					: null;
 			if (did && pds) {
-				const result = await pushWiki(
-					this.appview,
-					pds,
-					did,
-					hostVault(this.app),
+				const result = await this.followingRenames(
 					uri,
-					wiki.folder,
-					pulled.state,
+					(vault, folder, known) =>
+						pushWiki(this.appview, pds, did, vault, uri, folder, known),
 				);
-				await this.saveSync(uri, result.state);
-				pushed = result.report;
+				if (result) {
+					await this.saveSync(uri, result.state);
+					pushed = result.report;
+				}
 			}
 			new Notice(describeSync(label, pulled.report, pushed));
 		} catch (err) {
 			new Notice(`Lichen Sync: syncing ${label} failed. ${reasonOf(err)}`);
+		}
+	}
+
+	/**
+	 * Runs one side of a sync against the vault as it stood when that side began, then moves its
+	 * state's paths to where files went meanwhile. Null when the wiki stopped syncing.
+	 */
+	private async followingRenames<R extends { state: WikiState }>(
+		uri: ResourceUri,
+		run: (vault: Vault, folder: string, known: WikiState) => Promise<R>,
+	): Promise<R | null> {
+		const wiki = findWiki(this.data.settings.wikis, uri);
+		if (!wiki) return null;
+		const log = new RenameLog();
+		this.renameLogs.add(log);
+		try {
+			const result = await run(
+				log.vault(hostVault(this.app)),
+				wiki.folder,
+				this.data.sync[uri] ?? {},
+			);
+			const folder = log.follow(wiki.folder);
+			return {
+				...result,
+				state: log.followState(result.state, (path) =>
+					isNotePath(folder, path),
+				),
+			};
+		} finally {
+			this.renameLogs.delete(log);
 		}
 	}
 
@@ -339,6 +384,7 @@ export class LichenSyncPlugin extends Plugin {
 		state: WikiState,
 		pulledAt?: string,
 	): Promise<void> {
+		if (!findWiki(this.data.settings.wikis, uri)) return;
 		await this.save({
 			...this.data,
 			settings: pulledAt
