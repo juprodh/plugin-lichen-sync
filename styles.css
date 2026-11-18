@@ -30,14 +30,29 @@
 	padding: var(--size-4-4) var(--size-4-5);
 }
 
-.lichen-sync-danger .setting-item-name {
-	color: var(--text-error);
+:is(.lichen-sync-wiki, .lichen-sync-danger)
+	:is(.setting-item-name, .setting-item-value) {
+	font-size: var(--font-ui-medium);
 }
 
-:is(.lichen-sync-account-group, .lichen-sync-wikis)
+:is(.lichen-sync-wiki, .lichen-sync-danger) .setting-item-description {
+	font-size: var(--font-ui-small);
+}
+
+.setting-page:has(> .setting-page-content > .lichen-sync-wiki)
+	> .setting-page-titlebar
+	.setting-page-title {
+	font-size: var(--font-ui-large);
+}
+
+:is(.lichen-sync-account-group, .lichen-sync-wikis, .lichen-sync-wiki)
 	.setting-item-heading
 	.setting-item-name {
 	font-size: var(--font-ui-large);
+}
+
+.lichen-sync-danger .setting-item.mod-action .setting-item-name {
+	color: var(--text-error);
 }
 
 .lichen-sync-syncing svg {

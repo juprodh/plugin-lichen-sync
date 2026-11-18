@@ -143,6 +143,7 @@ export class SettingsTab extends PluginSettingTab {
 			items: [
 				{
 					type: "group",
+					cls: "lichen-sync-wiki",
 					items: [
 						{
 							name: "Folder",
@@ -187,6 +188,7 @@ export class SettingsTab extends PluginSettingTab {
 				{
 					type: "group",
 					heading: "Actions",
+					cls: "lichen-sync-wiki",
 					items: [
 						{
 							name: "Sync now",
