@@ -1,3 +1,4 @@
+import { Platform } from "obsidian";
 import { LOOPBACK_CALLBACK_PATH, LOOPBACK_PORT } from "../core/oauth.ts";
 
 // The slice of node:http used here; the bundle's types are the browser's, without Node.
@@ -20,10 +21,12 @@ interface NodeHttp {
 
 // Electron's own require: the bundler would swap a plain require("node:http") for a browser stub.
 function nodeHttp(): NodeHttp {
+	if (!Platform.isDesktopApp) {
+		throw new Error("Signing in needs the desktop app for now.");
+	}
 	const { require } = window as unknown as {
-		require?: (id: "node:http") => NodeHttp;
+		require: (id: "node:http") => NodeHttp;
 	};
-	if (!require) throw new Error("Signing in needs the desktop app for now.");
 	return require("node:http");
 }
 

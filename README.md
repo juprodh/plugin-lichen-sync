@@ -10,7 +10,7 @@ Install it from Obsidian's community plugins: <https://community.obsidian.md/plu
 2. Pick a folder for it, or your whole vault. Its notes come in right away.
 3. Click the Lichen icon again to sync, or run **Lichen Sync: Sync all wikis**.
 
-Public wikis sync without an account. To send your edits, sign in with your Bluesky or atproto handle.
+Public wikis sync without an account. To send your edits, sign in with your Bluesky or atproto handle, from the desktop app for now.
 
 - A new markdown file in the wiki's folder becomes a new note.
 - When you and lichen.wiki changed the same lines, your version is kept in `<wiki> (conflicts)/` and flagged in settings until you delete it.

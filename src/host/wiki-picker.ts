@@ -4,7 +4,7 @@ import {
 	isActorIdentifier,
 	type ResourceUri,
 } from "@atcute/lexicons/syntax";
-import { type App, SuggestModal } from "obsidian";
+import { type App, Platform, SuggestModal } from "obsidian";
 import { debounced } from "../core/debounce.ts";
 import { folderName } from "../core/folders.ts";
 import { type Actor, actorQuery } from "../core/handle-suggest.ts";
@@ -152,7 +152,9 @@ export class WikiPickerModal extends SuggestModal<PickerItem> {
 		// An instance with no wiki search answers MethodNotImplemented: your own wikis still list.
 		const found = await findWikis(appview, query, yours).catch(() => []);
 		const wikis = mergeWikis(matchWikis(yours, query), found).map(wikiItem);
-		return account || query.trim() ? wikis : [SIGN_IN_ITEM, ...wikis];
+		return account || query.trim() || Platform.isMobile
+			? wikis
+			: [SIGN_IN_ITEM, ...wikis];
 	}
 
 	private async findAccount(query: string): Promise<PickerItem[]> {

@@ -1,9 +1,9 @@
 {
 	"id": "lichen-sync",
 	"name": "Lichen Sync",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"minAppVersion": "1.13.1",
 	"description": "Sync the notes of your Lichen wikis with a vault folder.",
 	"author": "juprodh.me",
-	"isDesktopOnly": true
+	"isDesktopOnly": false
 }
