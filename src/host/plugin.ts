@@ -4,12 +4,31 @@ import {
 	isActorIdentifier,
 	type ResourceUri,
 } from "@atcute/lexicons/syntax";
-import { Menu, Notice, Plugin, TFile, TFolder } from "obsidian";
+import { SYNC_PLUGIN_PROTOCOL_ACTION } from "@lichen-wiki/client/sync-plugin-oauth";
+import {
+	Menu,
+	Notice,
+	type ObsidianProtocolData,
+	Plugin,
+	TFile,
+	TFolder,
+} from "obsidian";
 import { canWrite, lichenAppview } from "../core/appview.ts";
 import { conflictsFolder, isNotePath } from "../core/folders.ts";
 import { bareActor } from "../core/identity.ts";
-import { lichenOAuth, signedInDid } from "../core/oauth.ts";
-import { type PluginData, parsePluginData } from "../core/plugin-data.ts";
+import {
+	callbackParams,
+	lichenOAuth,
+	parsePendingSignIns,
+	parseSessions,
+	signedInDid,
+	signInFailure,
+} from "../core/oauth.ts";
+import {
+	holdsLoopbackSession,
+	type PluginData,
+	parsePluginData,
+} from "../core/plugin-data.ts";
 import { pullWiki } from "../core/pull.ts";
 import { type PushReport, pushWiki } from "../core/push.ts";
 import { RenameLog } from "../core/renames.ts";
@@ -31,35 +50,48 @@ import type { Vault } from "../core/vault.ts";
 import type { WikiChoice } from "../core/wiki-search.ts";
 import { type AddWikiHost, openAddWiki } from "./add-wiki.ts";
 import { addLichenIcon, LICHEN_ICON } from "./icon.ts";
-import { type CallbackListener, listenForCallback } from "./loopback.ts";
+import { vaultSecret } from "./secrets.ts";
 import { SettingsTab } from "./settings-tab.ts";
 import { sleep } from "./sleep.ts";
 import { hostVault } from "./vault.ts";
+
+// The life of an OAuth state: past it, lichen.wiki's answer can no longer sign in.
+const SIGN_IN_WAIT_MS = 10 * 60_000;
 
 export class LichenSyncPlugin extends Plugin {
 	private data: PluginData = parsePluginData(undefined);
 	private syncing = false;
 	private ribbon: HTMLElement | null = null;
-	private signInListener: CallbackListener | null = null;
+	private signInWaiter: { readonly state: string; release(): void } | null =
+		null;
 	/** One per side of a sync in progress. */
 	private readonly renameLogs = new Set<RenameLog>();
 	private readonly appview = lichenAppview();
+	private readonly sessions = vaultSecret(this.app, "session", parseSessions);
 	private readonly oauth = lichenOAuth({
-		get: () => this.data.sessions,
-		save: (sessions) => this.save({ ...this.data, sessions }),
+		sessions: this.sessions,
+		signIns: vaultSecret(this.app, "sign-in", parsePendingSignIns),
 	});
 	private readonly wikiHost: AddWikiHost = {
 		appview: this.appview,
 		settings: () => this.data.settings,
-		signedIn: () => signedInDid(this.data.sessions),
+		signedIn: () => signedInDid(this.sessions.get()),
 		signIn: (account) => this.signIn(account),
 		addWiki: (wiki, folder) => this.addWiki(wiki, folder),
 	};
 	private settingsTab: SettingsTab | null = null;
 
 	override async onload(): Promise<void> {
-		this.data = parsePluginData(await this.loadData());
-		this.register(() => this.stopSignIn());
+		const saved: unknown = await this.loadData();
+		this.data = parsePluginData(saved);
+		if (holdsLoopbackSession(saved)) {
+			await this.save(this.data);
+			new Notice("Lichen Sync: signing in now works on mobile too.");
+		}
+		this.register(() => this.releaseSignInWaiter());
+		this.registerObsidianProtocolHandler(SYNC_PLUGIN_PROTOCOL_ACTION, (data) =>
+			this.finishSignIn(data),
+		);
 		this.settingsTab = new SettingsTab(this.app, this, {
 			...this.wikiHost,
 			signOut: () => this.signOut(),
@@ -188,42 +220,63 @@ export class LichenSyncPlugin extends Plugin {
 		});
 	}
 
+	/** Opens lichen.wiki's sign-in in the browser, and settles once Obsidian is back with its answer. */
 	private async signIn(account: string): Promise<void> {
-		// A new sign-in replaces one still waiting on the browser, which would hold the port.
-		this.stopSignIn();
-		let listener: CallbackListener | null = null;
+		this.releaseSignInWaiter();
 		try {
 			const actor = bareActor(account);
 			if (!isActorIdentifier(actor)) {
 				throw new Error(`Not a handle or a DID: "${account}"`);
 			}
 			await this.saveSettings({ account: actor });
-			listener = await listenForCallback();
-			this.signInListener = listener;
-			const { url } = await this.oauth.authorize({
+			const { url, stateId } = await this.oauth.authorize({
 				target: { type: "account", identifier: actor },
 			});
+			const answered = new Promise<void>((resolve) => {
+				const timer = window.setTimeout(
+					() => this.releaseSignInWaiter(),
+					SIGN_IN_WAIT_MS,
+				);
+				this.signInWaiter = {
+					state: stateId,
+					release: () => {
+						window.clearTimeout(timer);
+						resolve();
+					},
+				};
+			});
 			window.open(url.href);
-			const { session } = await this.oauth.callback(await listener.params);
-			new Notice(`Lichen Sync: signed in as ${actor} (${session.did}).`);
+			await answered;
 		} catch (err) {
-			// A sign-in replaced or stopped on unload ends quietly.
-			if (listener && this.signInListener !== listener) return;
-			new Notice(`Lichen Sync: sign-in failed. ${reasonOf(err)}`);
-		} finally {
-			listener?.close();
-			if (this.signInListener === listener) this.signInListener = null;
+			new Notice(`Lichen Sync: ${signInFailure(err)}`);
 		}
 	}
 
-	private stopSignIn(): void {
-		const listener = this.signInListener;
-		this.signInListener = null;
-		listener?.close();
+	// Also reached with no sign-in waiting in memory: a phone may have closed Obsidian meanwhile.
+	private async finishSignIn(data: ObsidianProtocolData): Promise<void> {
+		const params = callbackParams(data);
+		try {
+			const { session } = await this.oauth.callback(params);
+			const { account } = this.data.settings;
+			new Notice(`Lichen Sync: signed in as ${account} (${session.did}).`);
+		} catch (err) {
+			new Notice(`Lichen Sync: ${signInFailure(err)}`);
+		} finally {
+			if (this.signInWaiter?.state === params.get("state")) {
+				this.releaseSignInWaiter();
+			}
+			this.settingsTab?.update();
+		}
+	}
+
+	private releaseSignInWaiter(): void {
+		const waiter = this.signInWaiter;
+		this.signInWaiter = null;
+		waiter?.release();
 	}
 
 	private async signOut(): Promise<void> {
-		const did = signedInDid(this.data.sessions);
+		const did = signedInDid(this.sessions.get());
 		if (!did) return;
 		try {
 			await this.oauth.revoke(did);
@@ -231,7 +284,7 @@ export class LichenSyncPlugin extends Plugin {
 			// The session goes either way; the server lets the token expire.
 			console.warn("Lichen Sync: revoking the session failed.", err);
 		} finally {
-			await this.save({ ...this.data, sessions: {} });
+			await this.sessions.save({});
 		}
 	}
 
@@ -330,7 +383,7 @@ export class LichenSyncPlugin extends Plugin {
 			if (!pulled) return;
 			await this.saveSync(uri, pulled.state, new Date().toISOString());
 			let pushed: PushReport | null = null;
-			const did = signedInDid(this.data.sessions);
+			const did = signedInDid(this.sessions.get());
 			const pds =
 				did && (await canWrite(this.appview, uri, did))
 					? await author(did)

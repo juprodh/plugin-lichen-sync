@@ -1,13 +1,11 @@
 import { asRecord } from "./json.ts";
-import { parseSessions, type Sessions } from "./oauth.ts";
 import { parseSettings, type Settings } from "./settings.ts";
 import { parseSyncState, type SyncState } from "./sync-state.ts";
 
-/** The whole of data.json. */
+/** The whole of data.json. Sessions live in the host's secret storage instead, since data.json travels with the vault. */
 export interface PluginData {
 	readonly settings: Settings;
 	readonly sync: SyncState;
-	readonly sessions: Sessions;
 }
 
 // data.json holds whatever an older version or a hand edit left there.
@@ -16,6 +14,10 @@ export function parsePluginData(data: unknown): PluginData {
 	return {
 		settings: parseSettings(raw["settings"]),
 		sync: parseSyncState(raw["sync"]),
-		sessions: parseSessions(raw["sessions"]),
 	};
+}
+
+/** Whether data.json still holds a session from 0.1's loopback client, which signing in no longer uses. */
+export function holdsLoopbackSession(data: unknown): boolean {
+	return Object.keys(asRecord(asRecord(data)["sessions"])).length > 0;
 }

@@ -2,7 +2,6 @@ import type { ResourceUri } from "@atcute/lexicons/syntax";
 import {
 	type App,
 	Notice,
-	Platform,
 	type Plugin,
 	PluginSettingTab,
 	type Setting,
@@ -101,14 +100,6 @@ export class SettingsTab extends PluginSettingTab {
 				.catch(() => {});
 			return;
 		}
-		if (Platform.isMobile) {
-			setting
-				.setName("Sign in")
-				.setDesc(
-					"Signing in needs the desktop app for now. Syncing a public wiki needs no account.",
-				);
-			return;
-		}
 		let account = this.host.settings().account;
 		setting
 			.setName("Sign in")
@@ -131,7 +122,6 @@ export class SettingsTab extends PluginSettingTab {
 					.setButtonText("Sign in")
 					.setCta()
 					.onClick(async () => {
-						button.setDisabled(true);
 						await this.host.signIn(account);
 						this.update();
 					}),
@@ -246,9 +236,7 @@ export class SettingsTab extends PluginSettingTab {
 						);
 					} else {
 						display.setValue(
-							account || Platform.isMobile
-								? "Read only"
-								: "Read only · Sign in to edit",
+							account ? "Read only" : "Read only · Sign in to edit",
 						);
 					}
 				})

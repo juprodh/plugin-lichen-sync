@@ -10,7 +10,7 @@
         "@atcute/lexicons": "^2.1.1",
         "@atcute/oauth-node-client": "^2.0.1",
         "@atcute/tid": "^1.1.4",
-        "@lichen-wiki/client": "^0.1.0",
+        "@lichen-wiki/client": "^0.2.0",
         "diff-match-patch": "^1.0.5",
       },
       "devDependencies": {
@@ -132,7 +132,7 @@
 
     "@keyv/serialize": ["@keyv/serialize@1.1.1", "", {}, "sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA=="],
 
-    "@lichen-wiki/client": ["@lichen-wiki/client@0.1.0", "", { "dependencies": { "@atcute/client": "^5.1.2", "@atcute/lexicon-community": "^2.0.4", "@atcute/lexicons": "^2.1.1", "@atcute/tid": "^1.1.4", "@sindresorhus/slugify": "^4.0.1", "diff-match-patch": "^1.0.5" } }, "sha512-GngheolCcEKGvIMXtWdzQGqDGE/BOZvfqCKMkSpD5iV1YVG2d9hrZgPNmZWcUbt1nNxLP5HjYHnWRtD0h+XSOg=="],
+    "@lichen-wiki/client": ["@lichen-wiki/client@0.2.0", "", { "dependencies": { "@atcute/client": "^5.1.2", "@atcute/lexicon-community": "^2.0.4", "@atcute/lexicons": "^2.1.1", "@atcute/tid": "^1.1.4", "@sindresorhus/slugify": "^4.0.1", "diff-match-patch": "^1.0.5" } }, "sha512-6wH33osdS2NUd7E6DjiCZvbpgYOM2JSDoBWpMOt8FsYGeBt18p36H2UpOIOahurZ269g3yrqVc6AvDZDSF5jBA=="],
 
     "@marijn/find-cluster-break": ["@marijn/find-cluster-break@1.0.4", "", {}, "sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ=="],
 

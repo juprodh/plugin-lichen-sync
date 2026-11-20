@@ -7,37 +7,31 @@ import {
 } from "@atcute/identity-resolver";
 import { type Did, isDid } from "@atcute/lexicons/syntax";
 import {
-	MemoryStore,
+	OAuthCallbackError,
 	OAuthClient,
 	type Store,
 	type StoredSession,
 	type StoredState,
 } from "@atcute/oauth-node-client";
+import { syncPluginClientMetadata } from "@lichen-wiki/client/sync-plugin-oauth";
+import { LICHEN_ORIGIN } from "./appview.ts";
 import { BSKY_APPVIEW } from "./identity.ts";
 import { asRecord } from "./json.ts";
-
-// Fixed, since a loopback client's id embeds its redirect URI and a token refresh must present the same id.
-export const LOOPBACK_PORT = 52741;
-export const LOOPBACK_CALLBACK_PATH = "/callback";
-const REDIRECT_URI = `http://127.0.0.1:${LOOPBACK_PORT}${LOOPBACK_CALLBACK_PATH}`;
-
-// The records the plugin writes; the PDS expands the set to their collections.
-const SCOPE = "atproto include:wiki.lichen.permissions";
-
-const SIGN_IN_TTL_MS = 10 * 60_000;
+import type { Saved } from "./saved.ts";
 
 /** OAuth sessions keyed by DID: tokens and the DPoP key, as the OAuth client stores them. */
 export type Sessions = Readonly<Record<Did, StoredSession>>;
 
-interface SessionsStore {
-	get(): Sessions;
-	save(sessions: Sessions): Promise<void>;
-}
+/** Sign-ins waiting on the browser, keyed by their OAuth `state`. */
+export type PendingSignIns = Readonly<Record<string, StoredState>>;
 
-/** The OAuth client, its sessions kept wherever `sessions` saves them. */
-export function lichenOAuth(sessions: SessionsStore): OAuthClient {
+/** The OAuth client lichen.wiki hosts for the plugin, its sessions and sign-ins kept where the host saves them. */
+export function lichenOAuth(stores: {
+	sessions: Saved<Sessions>;
+	signIns: Saved<PendingSignIns>;
+}): OAuthClient {
 	return new OAuthClient({
-		metadata: { redirect_uris: [REDIRECT_URI], scope: SCOPE },
+		metadata: syncPluginClientMetadata(LICHEN_ORIGIN),
 		actorResolver: new LocalActorResolver({
 			handleResolver: new XrpcHandleResolver({ serviceUrl: BSKY_APPVIEW }),
 			didDocumentResolver: new CompositeDidDocumentResolver({
@@ -48,17 +42,13 @@ export function lichenOAuth(sessions: SessionsStore): OAuthClient {
 			}),
 		}),
 		stores: {
-			sessions: sessionStore(sessions),
-			states: new MemoryStore<string, StoredState>({
-				maxSize: 10,
-				ttl: SIGN_IN_TTL_MS,
-				ttlAutopurge: true,
-			}),
+			sessions: sessionStore(stores.sessions),
+			states: signInStore(stores.signIns),
 		},
 	});
 }
 
-function sessionStore(sessions: SessionsStore): Store<Did, StoredSession> {
+function sessionStore(sessions: Saved<Sessions>): Store<Did, StoredSession> {
 	return {
 		get: (did) => sessions.get()[did],
 		set: (did, session) => sessions.save({ ...sessions.get(), [did]: session }),
@@ -67,6 +57,25 @@ function sessionStore(sessions: SessionsStore): Store<Did, StoredSession> {
 			return sessions.save(rest);
 		},
 		clear: () => sessions.save({}),
+	};
+}
+
+// Saved rather than in memory, since a phone may close Obsidian while the browser is open.
+function signInStore(
+	signIns: Saved<PendingSignIns>,
+): Store<string, StoredState> {
+	return {
+		get: (id) => {
+			const state = signIns.get()[id];
+			return state && state.expiresAt > Date.now() ? state : undefined;
+		},
+		// One sign-in at a time: a new one replaces any still waiting.
+		set: (id, state) => signIns.save({ [id]: state }),
+		delete: (id) => {
+			const { [id]: _, ...rest } = signIns.get();
+			return signIns.save(rest);
+		},
+		clear: () => signIns.save({}),
 	};
 }
 
@@ -84,4 +93,35 @@ export function parseSessions(data: unknown): Sessions {
 		}
 	}
 	return sessions;
+}
+
+// A malformed sign-in fails its callback, and signing in again replaces it.
+export function parsePendingSignIns(data: unknown): PendingSignIns {
+	const signIns: Record<string, StoredState> = {};
+	for (const [id, state] of Object.entries(asRecord(data))) {
+		if (typeof asRecord(state)["expiresAt"] === "number") {
+			signIns[id] = state as StoredState;
+		}
+	}
+	return signIns;
+}
+
+/** The authorization response in an `obsidian://` URL's parameters, which also name the action. */
+export function callbackParams(
+	data: Readonly<Record<string, string>>,
+): URLSearchParams {
+	const { action: _, ...params } = data;
+	return new URLSearchParams(params);
+}
+
+/** What the user reads when a sign-in fails, after "Lichen Sync: ". */
+export function signInFailure(err: unknown): string {
+	if (err instanceof OAuthCallbackError) {
+		if (err.error === "access_denied") return "sign-in was cancelled.";
+		// atcute reports an unknown state only through its description.
+		if (err.errorDescription === "unknown state") {
+			return "that sign-in expired, was replaced by a newer one, or was started in another vault. Sign in again.";
+		}
+	}
+	return `sign-in failed. ${err instanceof Error ? err.message : String(err)}`;
 }

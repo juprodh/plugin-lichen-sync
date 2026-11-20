@@ -12,16 +12,16 @@ bun run dev               # main.js, rebuilt on change
 bun scripts/pull.ts <owner> <wiki> <dir>   # pull a public wiki into a folder, as the plugin does into a vault
 
 nix develop path:.#obsidian -c scripts/obsidian.sh   # the plugin in a test Obsidian, headless
-bun scripts/devtools.ts eval|screenshot|logs         # drive that Obsidian
+bun scripts/devtools.ts eval|open|screenshot|logs    # drive that Obsidian
 ```
 
 `bun run lint` runs Biome, then ESLint with `eslint-plugin-obsidianmd`, the rules Obsidian's review checks a submission against. Update that plugin before a release, since the review runs its latest version. TypeScript stays on 6 until `typescript-eslint` supports 7.
 
 To release, raise `version` in `manifest.json` (`x.y.z`, no `v`) and push `main` to tangled: CI mirrors it to GitHub, which Obsidian reads, and releases that version there.
 
-`@lichen-wiki/client` comes from npm, published from `packages/client` in lichen.wiki's repo (<https://tangled.org/juprodh.me/lichen.wiki>). To try an unpublished change, run `bun link` there and `bun link @lichen-wiki/client` here: the plugin then reads that package's `dist/`, so rerun its `bun run build` after each change. `bun install` brings back the published one.
+`@lichen-wiki/client` comes from npm, published from `packages/client` in lichen.wiki's repo (<https://tangled.org/juprodh.me/lichen.wiki>). To try an unpublished change, run `bun link` there and `bun link @lichen-wiki/client` here: the plugin then reads that package's `dist/`, so rerun its `bun run build` after each change. `bun install` brings back the published one. Under the link `bun test` fails in `pull` and `push`, the package resolving a second `@atcute/client` from lichen.wiki's `node_modules`: to run the suite, `bun install` and copy the changed files of that `dist/` into `node_modules/@lichen-wiki/client/dist/` instead.
 
-`scripts/obsidian.sh` runs the Obsidian the flake pins, updates off, on a virtual display, with DevTools on `127.0.0.1:9222`. Its test vault and Obsidian profile are in `~/.local/state/lichen-sync-dev/` (`LICHEN_SYNC_DEV_DIR`), apart from your own vaults. `bun run dev` builds `main.js` into the vault's plugin folder and Hot Reload reloads it. Running it on another machine? Forward ports 9222 (DevTools) and 52741 (sign-in).
+`scripts/obsidian.sh` runs the Obsidian the flake pins, updates off, on a virtual display, with DevTools on `127.0.0.1:9222`. Its test vault and Obsidian profile are in `~/.local/state/lichen-sync-dev/` (`LICHEN_SYNC_DEV_DIR`), apart from your own vaults. `bun run dev` builds `main.js` into the vault's plugin folder and Hot Reload reloads it. Running it on another machine? Forward port 9222 (DevTools). To sign in there, open the URL it logs in your own browser, then hand the callback page's "Open Obsidian" link to `bun scripts/devtools.ts open`, since it has no OS to route `obsidian://`.
 
 ## Layout
 
@@ -44,4 +44,5 @@ tests/            mirrors src/core/
 - A renamed file stays its note: the plugin follows vault renames, and a push creates no note while a synced file is missing.
 - A push writes only on the head it last synced; a moved head waits for a pull to merge it. It never retracts a revision, since a head that moved past it reads the same as one that lost.
 - Sync state lives in the plugin's data, never in a note's frontmatter.
-- Node APIs stay in desktop-only paths (`src/host/loopback.ts`), so mobile remains possible.
+- The plugin runs on mobile too, so it uses no Node API.
+- The OAuth session lives in Obsidian's secret storage, never in `data.json`, which travels with the vault (`src/host/secrets.ts`).

@@ -1,6 +1,7 @@
 // Drives the Obsidian that scripts/obsidian.sh opened, through its DevTools port.
 const USAGE = `usage:
   bun scripts/devtools.ts eval '<js>'        evaluate in the app window (awaits promises), print the result
+  bun scripts/devtools.ts open <url>         hand an obsidian:// URL to its handler, as the OS would
   bun scripts/devtools.ts screenshot <file>  save the window as a PNG
   bun scripts/devtools.ts logs               stream console output until interrupted`;
 
@@ -70,31 +71,41 @@ function send(
 	});
 }
 
+async function evaluate(expression: string): Promise<never> {
+	const { result, exceptionDetails } = (await send("Runtime.evaluate", {
+		expression,
+		// Allows top-level await, as in the DevTools console.
+		replMode: true,
+		awaitPromise: true,
+		returnByValue: true,
+	})) as {
+		result: { value?: unknown; description?: string };
+		exceptionDetails?: { exception?: { description?: string } };
+	};
+	if (exceptionDetails) {
+		console.error(exceptionDetails.exception?.description ?? exceptionDetails);
+		process.exit(1);
+	}
+	console.log(
+		result.value === undefined
+			? (result.description ?? "undefined")
+			: JSON.stringify(result.value, null, 2),
+	);
+	process.exit(0);
+}
+
 switch (command) {
-	case "eval": {
+	case "eval":
+		if (arg) await evaluate(arg);
+		break;
+	// No display means no OS to route obsidian:// links, such as the one lichen.wiki's sign-in returns.
+	case "open": {
 		if (!arg) break;
-		const { result, exceptionDetails } = (await send("Runtime.evaluate", {
-			expression: arg,
-			// Allows top-level await, as in the DevTools console.
-			replMode: true,
-			awaitPromise: true,
-			returnByValue: true,
-		})) as {
-			result: { value?: unknown; description?: string };
-			exceptionDetails?: { exception?: { description?: string } };
-		};
-		if (exceptionDetails) {
-			console.error(
-				exceptionDetails.exception?.description ?? exceptionDetails,
-			);
-			process.exit(1);
-		}
-		console.log(
-			result.value === undefined
-				? (result.description ?? "undefined")
-				: JSON.stringify(result.value, null, 2),
+		const url = new URL(arg);
+		const data = { action: url.host, ...Object.fromEntries(url.searchParams) };
+		await evaluate(
+			`app.workspace.protocolHandler.handlers.get(${JSON.stringify(url.host)})(${JSON.stringify(data)})`,
 		);
-		process.exit(0);
 		break;
 	}
 	case "screenshot": {

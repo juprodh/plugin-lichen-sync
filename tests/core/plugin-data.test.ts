@@ -1,5 +1,8 @@
 import { expect, test } from "bun:test";
-import { parsePluginData } from "../../src/core/plugin-data.ts";
+import {
+	holdsLoopbackSession,
+	parsePluginData,
+} from "../../src/core/plugin-data.ts";
 
 test("keeps well-formed data", () => {
 	const data = {
@@ -16,18 +19,13 @@ test("keeps well-formed data", () => {
 			],
 		},
 		sync: { wiki: { note: { path: "notes/a.md", head: "r", base: "" } } },
-		sessions: { "did:plc:bob": { tokenSet: {} } },
 	};
 	expect<unknown>(parsePluginData(data)).toEqual(data);
 });
 
 test("falls back on missing or mistyped data", () => {
 	const empty = { account: "", wikis: [] };
-	expect(parsePluginData(null)).toEqual({
-		settings: empty,
-		sync: {},
-		sessions: {},
-	});
+	expect(parsePluginData(null)).toEqual({ settings: empty, sync: {} });
 	expect(
 		parsePluginData({
 			settings: {
@@ -38,7 +36,14 @@ test("falls back on missing or mistyped data", () => {
 				],
 			},
 			sync: { wiki: { note: { path: "notes/a.md" } } },
-			sessions: { "not-a-did": {}, "did:plc:bob": "token" },
 		}),
-	).toEqual({ settings: empty, sync: { wiki: {} }, sessions: {} });
+	).toEqual({ settings: empty, sync: { wiki: {} } });
+});
+
+test("spots a session left in data.json, which signing in replaces", () => {
+	expect(
+		holdsLoopbackSession({ sessions: { "did:plc:bob": { tokenSet: {} } } }),
+	).toBe(true);
+	expect(holdsLoopbackSession({ sessions: {} })).toBe(false);
+	expect(holdsLoopbackSession({ settings: {} })).toBe(false);
 });

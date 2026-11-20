@@ -13,12 +13,13 @@ import {
 	WikiLichenSearchWikis,
 } from "@lichen-wiki/client/lexicons/index";
 
-const LICHEN_APPVIEW = "https://lichen.wiki";
+/** lichen.wiki: the appview the plugin reads, and the host of its OAuth client. */
+export const LICHEN_ORIGIN = "https://lichen.wiki";
 const PAGE_SIZE = 100;
 
 export function lichenAppview(): Client {
 	return new Client({
-		handler: simpleFetchHandler({ service: LICHEN_APPVIEW }),
+		handler: simpleFetchHandler({ service: LICHEN_ORIGIN }),
 	});
 }
 
