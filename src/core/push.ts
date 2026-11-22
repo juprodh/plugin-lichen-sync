@@ -19,15 +19,9 @@ import { titleFromPath } from "./filenames.ts";
 import { isNotePath } from "./folders.ts";
 import type { SyncedNote, WikiState } from "./sync-state.ts";
 import type { Vault } from "./vault.ts";
+import { pollUntil, type WaitOptions } from "./wait.ts";
 
 type HeadOutcome = "accepted" | "lost" | "timeout";
-
-interface WaitOptions {
-	readonly attempts?: number;
-	readonly intervalMs?: number;
-	/** The host's timer: core/ also runs where there is no window. */
-	readonly sleep: (ms: number) => Promise<void>;
-}
 
 /** Polls until the appview names `revision` the head; `parent` is null for a new note. */
 async function waitForHead(
@@ -35,16 +29,16 @@ async function waitForHead(
 	uri: ResourceUri,
 	revision: string,
 	parent: string | null,
-	{ attempts = 15, intervalMs = 1000, sleep }: WaitOptions,
+	wait: WaitOptions,
 ): Promise<HeadOutcome> {
-	for (let attempt = 0; attempt < attempts; attempt++) {
-		if (attempt > 0) await sleep(intervalMs);
+	const outcome = await pollUntil(wait, async () => {
 		const head = (await getNote(appview, uri))?.latestRevisionUri ?? null;
-		if (head === revision) return "accepted";
+		if (head === revision) return "accepted" as const;
 		// Another revision took the parent; one built on ours within the wait reads the same.
-		if (head !== parent) return "lost";
-	}
-	return "timeout";
+		if (head !== parent) return "lost" as const;
+		return null;
+	});
+	return outcome ?? "timeout";
 }
 
 export interface PushReport {

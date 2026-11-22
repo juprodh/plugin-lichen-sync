@@ -2,6 +2,7 @@ import { Client } from "@atcute/client";
 import {
 	type Did,
 	isActorIdentifier,
+	isDid,
 	type ResourceUri,
 } from "@atcute/lexicons/syntax";
 import { SYNC_PLUGIN_PROTOCOL_ACTION } from "@lichen-wiki/client/sync-plugin-oauth";
@@ -16,6 +17,11 @@ import {
 import { canWrite, lichenAppview } from "../core/appview.ts";
 import { conflictsFolder, isNotePath } from "../core/folders.ts";
 import { bareActor } from "../core/identity.ts";
+import {
+	createWiki,
+	type NewWikiFields,
+	type NewWikiOutcome,
+} from "../core/new-wiki.ts";
 import {
 	callbackParams,
 	lichenOAuth,
@@ -78,6 +84,7 @@ export class LichenSyncPlugin extends Plugin {
 		signedIn: () => signedInDid(this.sessions.get()),
 		signIn: (account) => this.signIn(account),
 		addWiki: (wiki, folder) => this.addWiki(wiki, folder),
+		createWiki: (fields) => this.createWiki(fields),
 	};
 	private settingsTab: SettingsTab | null = null;
 
@@ -173,6 +180,17 @@ export class LichenSyncPlugin extends Plugin {
 			wikis: [...this.data.settings.wikis, wiki],
 		});
 		await this.sync([wiki.uri]);
+	}
+
+	private async createWiki(
+		fields: NewWikiFields,
+	): Promise<NewWikiOutcome | null> {
+		const did = signedInDid(this.sessions.get());
+		const pds = did ? await this.restorePds(did) : null;
+		if (!did || !pds) return null;
+		const { account } = this.data.settings;
+		const handle = account && !isDid(account) ? account : null;
+		return createWiki(this.appview, pds, { did, handle }, fields, { sleep });
 	}
 
 	// The files stay: they are the user's notes as much as the wiki's.

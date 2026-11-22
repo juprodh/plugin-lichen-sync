@@ -2,9 +2,11 @@ import { Client } from "@atcute/client";
 import * as v from "@atcute/lexicons/validations";
 import { applyDiff } from "@lichen-wiki/client/diff";
 import {
+	WikiLichenMembership,
 	WikiLichenNote,
 	WikiLichenNoteRevision,
 	WikiLichenNoteSnapshot,
+	WikiLichenWiki,
 } from "@lichen-wiki/client/lexicons/index";
 import type { Vault } from "../../src/core/vault.ts";
 
@@ -111,7 +113,55 @@ export function fakeAppview(
 	return { client, fetched };
 }
 
+/** Knows a wiki once `pds` holds its record and `polls` lookups went by, as ingest lags the write. */
+export function fakeWikiAppview(
+	pds: ReturnType<typeof fakePds>,
+	{ polls = 0, known = [] as string[] } = {},
+) {
+	let lookups = 0;
+	const client = new Client({
+		handler: async (pathname) => {
+			const params = new URL(pathname, "https://appview.test").searchParams;
+			const uri = params.get("uri") ?? "";
+			const viewer = params.get("viewer");
+			const written = pds.records.some((r) => r.uri === uri);
+			if (viewer && written) lookups++;
+			const ingested = written && lookups > polls;
+			if (!ingested && !known.includes(uri)) {
+				return json({ error: "NotFound" }, 400);
+			}
+			const grant = pds.records.find(
+				(r) =>
+					r.collection === "wiki.lichen.membership" && r.record.wikiRef === uri,
+			);
+			return json({
+				uri,
+				did: OWNER,
+				slug: uri.split("/").pop(),
+				name: "",
+				description: "",
+				language: "en",
+				noteCount: 0,
+				createdAt: STAMP,
+				updatedAt: STAMP,
+				...(viewer
+					? {
+							viewer: {
+								did: viewer,
+								canWrite: grant?.record.memberDid === viewer,
+								role: grant?.record.role,
+							},
+						}
+					: {}),
+			});
+		},
+	});
+	return { client };
+}
+
 const RECORD_SCHEMAS: Record<string, v.BaseSchema> = {
+	"wiki.lichen.wiki": WikiLichenWiki.mainSchema,
+	"wiki.lichen.membership": WikiLichenMembership.mainSchema,
 	"wiki.lichen.note": WikiLichenNote.mainSchema,
 	"wiki.lichen.noteRevision": WikiLichenNoteRevision.mainSchema,
 	"wiki.lichen.noteSnapshot": WikiLichenNoteSnapshot.mainSchema,
@@ -125,7 +175,7 @@ interface PdsRecord {
 }
 
 /**
- * Takes putRecord and applyWrites creates, refusing a record its lexicon refuses.
+ * Takes putRecord and applyWrites creates, refusing a record its lexicon refuses, and serves getRecord.
  * With `ingest`, records change `notes` as the appview's ingest would.
  */
 export function fakePds(notes: FakeNote[], { ingest = true } = {}) {
@@ -176,6 +226,14 @@ export function fakePds(notes: FakeNote[], { ingest = true } = {}) {
 
 	const client = new Client({
 		handler: async (pathname, init) => {
+			if (pathname.startsWith("/xrpc/com.atproto.repo.getRecord")) {
+				const params = new URL(pathname, "https://pds.test").searchParams;
+				const uri = `at://${params.get("repo")}/${params.get("collection")}/${params.get("rkey")}`;
+				const found = records.find((r) => r.uri === uri);
+				return found
+					? json({ uri, value: found.record })
+					: json({ error: "RecordNotFound" }, 400);
+			}
 			const input = JSON.parse(String(init.body));
 			if (pathname.startsWith("/xrpc/com.atproto.repo.putRecord")) {
 				const write = { collection: input.collection, record: input.record };

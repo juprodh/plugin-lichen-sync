@@ -39,6 +39,7 @@ tests/            mirrors src/core/
 
 - Every record rule comes from `@lichen-wiki/client`, so the plugin writes what ingest keeps.
 - A synced folder names files as a lichen.wiki export does. `src/core/filenames.ts` mirrors lichen.wiki's `src/import-export/filenames.ts` until that moves into `@lichen-wiki/client`: change both or neither.
+- The plugin words a refusal and lists languages as lichen.wiki does: `describeProblem` (`src/core/report.ts`) mirrors lichen.wiki's `src/i18n/locales/en.json`, and `COMMON_LANGUAGE_CODES` (`src/host/new-wiki.ts`) its `src/util/languages.ts`. Change both or neither.
 - A pull never loses a local edit: it merges the remote change in, and when the two overlap it writes the local text to a copy in `<wiki> (conflicts)/`. Merging matches exact context only.
 - Every markdown file in a wiki's folder or its subfolders is a note, so a push creates a note from a new one; nothing else the plugin writes goes there. A whole-vault wiki keeps its conflict copies in `Lichen conflicts/`, which it leaves out.
 - A renamed file stays its note: the plugin follows vault renames, and a push creates no note while a synced file is missing.

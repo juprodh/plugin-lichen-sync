@@ -3,7 +3,9 @@ import type { Did } from "@atcute/lexicons/syntax";
 import { type App, Notice } from "obsidian";
 import { canWrite } from "../core/appview.ts";
 import { folderName } from "../core/folders.ts";
+import type { NewWikiFields, NewWikiOutcome } from "../core/new-wiki.ts";
 import { plural } from "../core/plural.ts";
+import { describeProblem } from "../core/report.ts";
 import {
 	findWiki,
 	folderClash,
@@ -14,6 +16,7 @@ import {
 import type { WikiChoice } from "../core/wiki-search.ts";
 import { confirm } from "./confirm.ts";
 import { FolderPickerModal } from "./folder-picker.ts";
+import { NewWikiModal } from "./new-wiki.ts";
 import { notePaths } from "./vault.ts";
 import { WikiPickerModal } from "./wiki-picker.ts";
 
@@ -25,6 +28,8 @@ export interface AddWikiHost {
 	signIn(account: string): Promise<void>;
 	/** Saves the wiki and syncs it at once. */
 	addWiki(wiki: WikiChoice, folder: string): Promise<void>;
+	/** Null when the session lapsed. */
+	createWiki(fields: NewWikiFields): Promise<NewWikiOutcome | null>;
 }
 
 /** The wiki picker, then the folder picker; `onChange` runs once the settings changed. */
@@ -44,6 +49,41 @@ export function openAddWiki(
 			if (host.signedIn()) openAddWiki(app, host, onChange);
 		},
 		onPick: (choice) => pickFolder(app, host, choice, onChange),
+		onCreate: (name) => openNewWiki(app, host, name, onChange),
+	}).open();
+}
+
+function openNewWiki(
+	app: App,
+	host: AddWikiHost,
+	name: string,
+	onChange: () => void,
+): void {
+	const { account } = host.settings();
+	let created: WikiChoice | null = null;
+	new NewWikiModal(app, {
+		name,
+		addressPrefix: `lichen.wiki/@${account || host.signedIn()}/`,
+		submit: async (fields) => {
+			let outcome: NewWikiOutcome | null;
+			try {
+				outcome = await host.createWiki(fields);
+			} catch (err) {
+				return `Creating the wiki failed. ${err instanceof Error ? err.message : String(err)}`;
+			}
+			if (outcome === null) return "Sign in again to create a wiki.";
+			if ("problem" in outcome) return describeProblem(outcome.problem);
+			if (!outcome.seen) {
+				new Notice(
+					`Lichen Sync: ${outcome.wiki.name} is created, but lichen.wiki has not shown it yet. If its first sync fails, sync it again in a minute.`,
+				);
+			}
+			created = outcome.wiki;
+			return null;
+		},
+		onClose: () => {
+			if (created) pickFolder(app, host, created, onChange);
+		},
 	}).open();
 }
 

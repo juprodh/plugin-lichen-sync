@@ -27,6 +27,7 @@ import { renderRow } from "./suggestion-row.ts";
 type PickerItem =
 	| { readonly kind: "wiki"; readonly wiki: WikiChoice }
 	| { readonly kind: "sign-in" }
+	| { readonly kind: "new-wiki"; readonly name: string }
 	| {
 			readonly kind: "account";
 			readonly actor: Actor | null;
@@ -39,6 +40,8 @@ interface PickerContext {
 	/** The folder a wiki already syncs into. */
 	syncedFolder(uri: ResourceUri): string | undefined;
 	onPick(wiki: WikiChoice): void;
+	/** `name` is what the search box held. */
+	onCreate(name: string): void;
 	onSignIn(handle: string): Promise<void>;
 }
 
@@ -84,7 +87,14 @@ export class WikiPickerModal extends SuggestModal<PickerItem> {
 				renderRow(el, {
 					avatar: null,
 					title: "Sign in",
-					note: "To see your wikis and send your edits. Public wikis need no account.",
+					note: "To see your wikis, create one and send your edits. Public wikis need no account.",
+				});
+				return;
+			case "new-wiki":
+				renderRow(el, {
+					avatar: null,
+					title: item.name ? `New wiki “${item.name}”` : "New wiki",
+					note: "Create it on lichen.wiki under your account, then pick its folder",
 				});
 				return;
 			case "account":
@@ -128,6 +138,7 @@ export class WikiPickerModal extends SuggestModal<PickerItem> {
 
 	override onChooseSuggestion(item: PickerItem): void {
 		if (item.kind === "wiki") this.context.onPick(item.wiki);
+		if (item.kind === "new-wiki") this.context.onCreate(item.name);
 		if (item.kind === "account") void this.context.onSignIn(item.handle);
 	}
 
@@ -152,7 +163,8 @@ export class WikiPickerModal extends SuggestModal<PickerItem> {
 		// An instance with no wiki search answers MethodNotImplemented: your own wikis still list.
 		const found = await findWikis(appview, query, yours).catch(() => []);
 		const wikis = mergeWikis(matchWikis(yours, query), found).map(wikiItem);
-		return account || query.trim() ? wikis : [SIGN_IN_ITEM, ...wikis];
+		if (account) return [...wikis, { kind: "new-wiki", name: query.trim() }];
+		return query.trim() ? wikis : [SIGN_IN_ITEM, ...wikis];
 	}
 
 	private async findAccount(query: string): Promise<PickerItem[]> {

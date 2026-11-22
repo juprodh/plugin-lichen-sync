@@ -1,4 +1,5 @@
 import type { CheckProblem } from "@lichen-wiki/client/check";
+import type { NewWikiProblem } from "./new-wiki.ts";
 import { plural } from "./plural.ts";
 import type { PullReport } from "./pull.ts";
 import type { PushReport } from "./push.ts";
@@ -43,7 +44,9 @@ function notes(count: number): string {
 }
 
 // lichen.wiki's wording (lichen-repo/src/i18n/locales/en.json).
-function describeProblem(problem: CheckProblem): string {
+export function describeProblem(
+	problem: CheckProblem | NewWikiProblem,
+): string {
 	switch (problem.code) {
 		case "noteTitleRequired":
 			return "Title is required.";
@@ -53,6 +56,20 @@ function describeProblem(problem: CheckProblem): string {
 			return `Title is too long (max ${problem.max} characters).`;
 		case "revisionContentTooLong":
 			return `Content is too long (max ${problem.max} characters).`;
+		case "wikiNameRequired":
+			return "Wiki name is required.";
+		case "wikiNameTooLong":
+			return `Wiki name is too long (max ${problem.max} characters).`;
+		case "wikiSlugRequired":
+			return "That name can't be turned into an address. Please choose one (letters a-z, numbers and hyphens).";
+		case "wikiSlugInvalid":
+			return `"${problem.slug}" can't be used as an address. Use letters a-z, numbers and hyphens.`;
+		case "wikiSlugExists":
+			return `You already have a wiki at "${problem.slug}".`;
+		case "wikiLanguageRequired":
+			return "Language is required.";
+		case "wikiLanguageInvalid":
+			return "Language must be a valid BCP-47 tag (e.g. en, pt-BR).";
 		default:
 			return `Lichen would not keep it (${problem.code}).`;
 	}
