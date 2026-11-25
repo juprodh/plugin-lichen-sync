@@ -4,7 +4,7 @@ import {
 	mergeWikis,
 	parseWikiRef,
 	type WikiChoice,
-} from "../../src/core/wiki-search.ts";
+} from "../src/wiki-search.ts";
 
 const choice = (name: string, slug: string, handle: string): WikiChoice => ({
 	uri: `at://did:plc:x/wiki.lichen.wiki/${slug}`,

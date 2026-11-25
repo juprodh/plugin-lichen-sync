@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import type { PullReport } from "../../src/core/pull.ts";
-import type { PushReport } from "../../src/core/push.ts";
-import { describeSync } from "../../src/core/report.ts";
+import type { PullReport } from "../src/pull.ts";
+import type { PushReport } from "../src/push.ts";
+import { describeSync } from "../src/report.ts";
 
 const pull: PullReport = {
 	written: ["w/a.md"],

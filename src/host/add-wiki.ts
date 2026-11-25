@@ -1,11 +1,12 @@
 import type { Client } from "@atcute/client";
 import type { Did } from "@atcute/lexicons/syntax";
+import { canWrite } from "@lichen-wiki/sync/appview";
+import { folderName } from "@lichen-wiki/sync/folders";
+import type { NewWikiFields, NewWikiOutcome } from "@lichen-wiki/sync/new-wiki";
+import { plural } from "@lichen-wiki/sync/plural";
+import { describeProblem } from "@lichen-wiki/sync/report";
+import type { WikiChoice } from "@lichen-wiki/sync/wiki-search";
 import { type App, Notice } from "obsidian";
-import { canWrite } from "../core/appview.ts";
-import { folderName } from "../core/folders.ts";
-import type { NewWikiFields, NewWikiOutcome } from "../core/new-wiki.ts";
-import { plural } from "../core/plural.ts";
-import { describeProblem } from "../core/report.ts";
 import {
 	findWiki,
 	folderClash,
@@ -13,7 +14,6 @@ import {
 	type SyncedWiki,
 	wikiLabel,
 } from "../core/settings.ts";
-import type { WikiChoice } from "../core/wiki-search.ts";
 import { confirm } from "./confirm.ts";
 import { FolderPickerModal } from "./folder-picker.ts";
 import { NewWikiModal } from "./new-wiki.ts";

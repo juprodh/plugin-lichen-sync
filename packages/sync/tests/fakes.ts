@@ -8,7 +8,7 @@ import {
 	WikiLichenNoteSnapshot,
 	WikiLichenWiki,
 } from "@lichen-wiki/client/lexicons/index";
-import type { Vault } from "../../src/core/vault.ts";
+import type { Vault } from "../src/vault.ts";
 
 export const OWNER = "did:plc:owner";
 export const WIKI = `at://${OWNER}/wiki.lichen.wiki/notes` as const;

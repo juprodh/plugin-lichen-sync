@@ -10,6 +10,7 @@ export default defineConfig([
 		"main.js",
 		"data.json",
 		"tests",
+		"packages/*/tests",
 		"scripts",
 		"knip.config.ts",
 	]),

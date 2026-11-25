@@ -1,7 +1,7 @@
 import { isResourceUri, type ResourceUri } from "@atcute/lexicons/syntax";
 import { parseAtUri } from "@lichen-wiki/client/at-uri";
-import { isWithin, normalizeFolder } from "./folders.ts";
-import { asRecord, stringField } from "./json.ts";
+import { isWithin, normalizeFolder } from "@lichen-wiki/sync/folders";
+import { asRecord, stringField } from "@lichen-wiki/sync/json";
 
 /** A wiki kept in sync with one vault folder. */
 export interface SyncedWiki {

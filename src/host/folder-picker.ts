@@ -1,6 +1,6 @@
+import { folderLabel, normalizeFolder } from "@lichen-wiki/sync/folders";
+import { plural } from "@lichen-wiki/sync/plural";
 import { type App, SuggestModal } from "obsidian";
-import { folderLabel, normalizeFolder } from "../core/folders.ts";
-import { plural } from "../core/plural.ts";
 import { renderRow } from "./suggestion-row.ts";
 import { notePaths } from "./vault.ts";
 

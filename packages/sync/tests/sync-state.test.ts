@@ -1,9 +1,6 @@
 import { expect, test } from "bun:test";
-import { isNotePath } from "../../src/core/folders.ts";
-import {
-	moveSyncedFolder,
-	renameSyncedPath,
-} from "../../src/core/sync-state.ts";
+import { isNotePath } from "../src/folders.ts";
+import { moveSyncedFolder, renameSyncedPath } from "../src/sync-state.ts";
 
 const state = { note: { path: "notes/a.md", head: "r", base: "" } };
 const isNote = (path: string) => isNotePath("notes", path);

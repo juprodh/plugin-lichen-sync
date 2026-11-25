@@ -1,6 +1,6 @@
 import { type Did, isDid } from "@atcute/lexicons/syntax";
-import { BSKY_APPVIEW, bareActor } from "./identity.ts";
-import { asRecord } from "./json.ts";
+import { BSKY_APPVIEW, bareActor } from "@lichen-wiki/sync/identity";
+import { asRecord } from "@lichen-wiki/sync/json";
 
 // The community index lichen.wiki suggests handles from, for the sign-in field: suggestions only, it still takes any handle.
 // Mirrors lichen-repo/src/shared/handle-suggest.ts and avatar.ts until they move into @lichen-wiki/client.

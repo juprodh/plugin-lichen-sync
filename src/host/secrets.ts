@@ -1,5 +1,5 @@
+import type { Saved } from "@lichen-wiki/sync/saved";
 import type { App } from "obsidian";
-import type { Saved } from "../core/saved.ts";
 
 const VAULT_KEY = "lichen-sync-secret-key";
 

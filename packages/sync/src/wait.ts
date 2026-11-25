@@ -1,7 +1,7 @@
 export interface WaitOptions {
 	readonly attempts?: number;
 	readonly intervalMs?: number;
-	/** The host's timer: core/ also runs where there is no window. */
+	/** The host's timer: the sync also runs where there is no window. */
 	readonly sleep: (ms: number) => Promise<void>;
 }
 

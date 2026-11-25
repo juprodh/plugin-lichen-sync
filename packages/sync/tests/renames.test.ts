@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { isNotePath } from "../../src/core/folders.ts";
-import { RenameLog } from "../../src/core/renames.ts";
+import { isNotePath } from "../src/folders.ts";
+import { RenameLog } from "../src/renames.ts";
 import { memoryVault } from "./fakes.ts";
 
 test("follows file and folder renames in order, and back", () => {

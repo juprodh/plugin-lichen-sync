@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { pullWiki } from "../../src/core/pull.ts";
-import { pushWiki } from "../../src/core/push.ts";
+import { pullWiki } from "../src/pull.ts";
+import { pushWiki } from "../src/push.ts";
 import {
 	fakeAppview,
 	fakeNote,

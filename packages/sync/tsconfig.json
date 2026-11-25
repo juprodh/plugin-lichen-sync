@@ -1,0 +1,5 @@
+{
+	// It runs inside the plugin too, so it builds under the plugin's rules: DOM, no Node, no Bun.
+	"extends": "../../tsconfig.json",
+	"include": ["src"]
+}

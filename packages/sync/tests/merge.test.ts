@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mergeText } from "../../src/core/merge.ts";
+import { mergeText } from "../src/merge.ts";
 
 const base =
 	"# Title\n\nFirst paragraph.\n\nSecond paragraph.\n\nThird paragraph.\n";

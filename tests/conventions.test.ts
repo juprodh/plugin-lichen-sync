@@ -15,10 +15,28 @@ function imports(dir: string): [file: string, spec: string][] {
 	);
 }
 
-// core/ is the sync logic: free of the plugin API, so it runs in tests and under any host.
+const PLUGIN_API_OR_BUILTIN =
+	/^(?:obsidian|electron|@codemirror\/|@lezer\/|[a-z]+:)/;
+
+// The sync logic runs in the plugin and in a terminal, so it reads only its own files and npm.
+test("packages/sync/src/ imports neither the plugin, its API nor a runtime's builtins", () => {
+	const bad = imports("packages/sync/src").filter(
+		([, spec]) => PLUGIN_API_OR_BUILTIN.test(spec) || spec.startsWith("../"),
+	);
+	expect(bad).toEqual([]);
+});
+
+// core/ is the plugin's own logic: free of the plugin API, so it runs in tests.
 test("src/core/ imports neither the plugin API nor a runtime's builtins", () => {
-	const bad = imports("src/core").filter(([, spec]) =>
-		/^(?:obsidian|electron|@codemirror\/|@lezer\/|[a-z]+:)|\/host\//.test(spec),
+	const bad = imports("src/core").filter(
+		([, spec]) => PLUGIN_API_OR_BUILTIN.test(spec) || spec.includes("/host/"),
+	);
+	expect(bad).toEqual([]);
+});
+
+test("packages/sync/tests/ import only the package", () => {
+	const bad = imports("packages/sync/tests").filter(([, spec]) =>
+		spec.startsWith("../../"),
 	);
 	expect(bad).toEqual([]);
 });

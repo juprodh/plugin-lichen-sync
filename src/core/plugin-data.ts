@@ -1,6 +1,6 @@
-import { asRecord } from "./json.ts";
+import { asRecord } from "@lichen-wiki/sync/json";
+import { parseSyncState, type SyncState } from "@lichen-wiki/sync/sync-state";
 import { parseSettings, type Settings } from "./settings.ts";
-import { parseSyncState, type SyncState } from "./sync-state.ts";
 
 /** The whole of data.json. Sessions live in the host's secret storage instead, since data.json travels with the vault. */
 export interface PluginData {

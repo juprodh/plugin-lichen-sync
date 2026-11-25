@@ -4,12 +4,9 @@ import {
 	isActorIdentifier,
 	type ResourceUri,
 } from "@atcute/lexicons/syntax";
-import { type App, SuggestModal } from "obsidian";
-import { debounced } from "../core/debounce.ts";
-import { folderName } from "../core/folders.ts";
-import { type Actor, actorQuery } from "../core/handle-suggest.ts";
-import { bareActor, resolveOwner } from "../core/identity.ts";
-import { plural } from "../core/plural.ts";
+import { folderName } from "@lichen-wiki/sync/folders";
+import { bareActor, resolveOwner } from "@lichen-wiki/sync/identity";
+import { plural } from "@lichen-wiki/sync/plural";
 import {
 	findWikis,
 	matchWikis,
@@ -19,7 +16,10 @@ import {
 	wikiAt,
 	wikisOf,
 	yourWikis,
-} from "../core/wiki-search.ts";
+} from "@lichen-wiki/sync/wiki-search";
+import { type App, SuggestModal } from "obsidian";
+import { debounced } from "../core/debounce.ts";
+import { type Actor, actorQuery } from "../core/handle-suggest.ts";
 import { DEBOUNCE_MS, findActors, renderActor } from "./handle-suggest.ts";
 import { sleep } from "./sleep.ts";
 import { renderRow } from "./suggestion-row.ts";

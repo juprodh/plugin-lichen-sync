@@ -1,4 +1,10 @@
 import type { ResourceUri } from "@atcute/lexicons/syntax";
+import { getWiki } from "@lichen-wiki/sync/appview";
+import {
+	conflictsFolder,
+	folderLabel,
+	isWithin,
+} from "@lichen-wiki/sync/folders";
 import {
 	type App,
 	Notice,
@@ -9,8 +15,6 @@ import {
 	type SettingDefinitionPage,
 	TFile,
 } from "obsidian";
-import { getWiki } from "../core/appview.ts";
-import { conflictsFolder, folderLabel, isWithin } from "../core/folders.ts";
 import {
 	findWiki,
 	folderClash,

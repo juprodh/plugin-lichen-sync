@@ -1,4 +1,5 @@
 import { toWikiSlug } from "@lichen-wiki/client/slug";
+import type { NewWikiFields } from "@lichen-wiki/sync/new-wiki";
 import {
 	type App,
 	getLanguage,
@@ -6,7 +7,6 @@ import {
 	Setting,
 	type TextComponent,
 } from "obsidian";
-import type { NewWikiFields } from "../core/new-wiki.ts";
 
 // lichen.wiki's quick picks (lichen-repo/src/util/languages.ts); the wiki's settings there offer every language.
 const COMMON_LANGUAGE_CODES = [

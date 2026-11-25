@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { isNotePath, normalizeFolder } from "../../src/core/folders.ts";
+import { isNotePath, normalizeFolder } from "../src/folders.ts";
 
 test("normalizes a typed folder", () => {
 	expect(normalizeFolder(" /Lichen\\ notes / garden/ ")).toBe(

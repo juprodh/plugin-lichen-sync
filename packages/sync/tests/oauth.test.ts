@@ -7,8 +7,8 @@ import {
 	type Sessions,
 	signedInDid,
 	signInFailure,
-} from "../../src/core/oauth.ts";
-import type { Saved } from "../../src/core/saved.ts";
+} from "../src/oauth.ts";
+import type { Saved } from "../src/saved.ts";
 
 const session = {
 	tokenSet: { sub: "did:plc:bob" },

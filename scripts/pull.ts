@@ -1,11 +1,11 @@
 // Pulls a public wiki as the plugin does, with the sync state in <dir>/.lichen-sync.json.
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
-import { lichenAppview } from "../src/core/appview.ts";
-import { resolveWiki } from "../src/core/identity.ts";
-import { pullWiki } from "../src/core/pull.ts";
-import { parseSyncState } from "../src/core/sync-state.ts";
-import type { Vault } from "../src/core/vault.ts";
+import { lichenAppview } from "@lichen-wiki/sync/appview";
+import { resolveWiki } from "@lichen-wiki/sync/identity";
+import { pullWiki } from "@lichen-wiki/sync/pull";
+import { parseSyncState } from "@lichen-wiki/sync/sync-state";
+import type { Vault } from "@lichen-wiki/sync/vault";
 
 const [owner, wikiSlug, dir] = process.argv.slice(2);
 if (!owner || !wikiSlug || !dir) {

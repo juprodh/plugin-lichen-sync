@@ -6,6 +6,34 @@ import {
 	type ResourceUri,
 } from "@atcute/lexicons/syntax";
 import { SYNC_PLUGIN_PROTOCOL_ACTION } from "@lichen-wiki/client/sync-plugin-oauth";
+import { canWrite, lichenAppview } from "@lichen-wiki/sync/appview";
+import { conflictsFolder, isNotePath } from "@lichen-wiki/sync/folders";
+import { bareActor } from "@lichen-wiki/sync/identity";
+import {
+	createWiki,
+	type NewWikiFields,
+	type NewWikiOutcome,
+} from "@lichen-wiki/sync/new-wiki";
+import {
+	callbackParams,
+	lichenOAuth,
+	parsePendingSignIns,
+	parseSessions,
+	signedInDid,
+	signInFailure,
+} from "@lichen-wiki/sync/oauth";
+import { pullWiki } from "@lichen-wiki/sync/pull";
+import { type PushReport, pushWiki } from "@lichen-wiki/sync/push";
+import { RenameLog } from "@lichen-wiki/sync/renames";
+import { describeSync } from "@lichen-wiki/sync/report";
+import {
+	moveSyncedFolder,
+	renameSyncedPath,
+	type SyncState,
+	type WikiState,
+} from "@lichen-wiki/sync/sync-state";
+import type { Vault } from "@lichen-wiki/sync/vault";
+import type { WikiChoice } from "@lichen-wiki/sync/wiki-search";
 import {
 	Menu,
 	Notice,
@@ -14,31 +42,11 @@ import {
 	TFile,
 	TFolder,
 } from "obsidian";
-import { canWrite, lichenAppview } from "../core/appview.ts";
-import { conflictsFolder, isNotePath } from "../core/folders.ts";
-import { bareActor } from "../core/identity.ts";
-import {
-	createWiki,
-	type NewWikiFields,
-	type NewWikiOutcome,
-} from "../core/new-wiki.ts";
-import {
-	callbackParams,
-	lichenOAuth,
-	parsePendingSignIns,
-	parseSessions,
-	signedInDid,
-	signInFailure,
-} from "../core/oauth.ts";
 import {
 	holdsLoopbackSession,
 	type PluginData,
 	parsePluginData,
 } from "../core/plugin-data.ts";
-import { pullWiki } from "../core/pull.ts";
-import { type PushReport, pushWiki } from "../core/push.ts";
-import { RenameLog } from "../core/renames.ts";
-import { describeSync } from "../core/report.ts";
 import {
 	findWiki,
 	followFolderRename,
@@ -46,14 +54,6 @@ import {
 	type SyncedWiki,
 	wikiLabel,
 } from "../core/settings.ts";
-import {
-	moveSyncedFolder,
-	renameSyncedPath,
-	type SyncState,
-	type WikiState,
-} from "../core/sync-state.ts";
-import type { Vault } from "../core/vault.ts";
-import type { WikiChoice } from "../core/wiki-search.ts";
 import { type AddWikiHost, openAddWiki } from "./add-wiki.ts";
 import { addLichenIcon, LICHEN_ICON } from "./icon.ts";
 import { vaultSecret } from "./secrets.ts";

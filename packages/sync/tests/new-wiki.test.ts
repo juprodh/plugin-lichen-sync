@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { createWiki } from "../../src/core/new-wiki.ts";
+import { createWiki } from "../src/new-wiki.ts";
 import { fakePds, fakeWikiAppview, OWNER } from "./fakes.ts";
 
 const owner = { did: OWNER, handle: "owner.test" } as const;

@@ -1,6 +1,6 @@
+import { isNotePath, isWithin } from "@lichen-wiki/sync/folders";
+import type { Vault } from "@lichen-wiki/sync/vault";
 import { type App, normalizePath } from "obsidian";
-import { isNotePath, isWithin } from "../core/folders.ts";
-import type { Vault } from "../core/vault.ts";
 
 export function hostVault(app: App): Vault {
 	return {
