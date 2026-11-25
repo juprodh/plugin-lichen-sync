@@ -1,22 +1,9 @@
+import {
+	deduplicateFilename,
+	sanitizeFilename,
+} from "@lichen-wiki/client/filenames";
 import { SIDEBAR_NOTE_SLUG } from "@lichen-wiki/client/slug";
 import { conflictsFolder } from "./folders.ts";
-
-// sanitizeFilename and deduplicateFilename mirror lichen-repo
-// src/import-export/filenames.ts, so a synced folder names files as an export does.
-const INVALID_FILENAME_CHARS = /[/\\:*?"<>|]/g;
-
-function sanitizeFilename(title: string): string {
-	return (
-		title.replace(INVALID_FILENAME_CHARS, "").trim().slice(0, 200) || "untitled"
-	);
-}
-
-function deduplicateFilename(name: string, used: ReadonlySet<string>): string {
-	if (!used.has(name.toLowerCase())) return name;
-	let counter = 2;
-	while (used.has(`${name}-${counter}`.toLowerCase())) counter++;
-	return `${name}-${counter}`;
-}
 
 /** `name` in `folder`, where "" is the vault's root. */
 function joinPath(folder: string, name: string): string {

@@ -1,12 +1,12 @@
 import type { Did } from "@atcute/lexicons/syntax";
-import { AbstractInputSuggest, type App, requestUrl } from "obsidian";
-import { debounced } from "../core/debounce.ts";
 import {
 	type Actor,
 	actorQuery,
-	getProfile,
 	searchActors,
-} from "../core/handle-suggest.ts";
+} from "@lichen-wiki/client/handle-suggest";
+import { AbstractInputSuggest, type App, requestUrl } from "obsidian";
+import { debounced } from "../core/debounce.ts";
+import { getProfile } from "../core/profile.ts";
 import { sleep } from "./sleep.ts";
 import { renderRow } from "./suggestion-row.ts";
 

@@ -28,7 +28,7 @@ To release, raise `version` in `manifest.json` (`x.y.z`, no `v`) and push `main`
 ```
 src/main.ts       the entry: default-exports the plugin class, as Obsidian requires
 src/host/         everything that touches Obsidian's API: the plugin class, the settings tab, the vault adapter
-src/core/         the plugin's own logic, platform-free: its settings and data.json, handle suggestions
+src/core/         the plugin's own logic, platform-free: its settings and data.json, the profile lookup
 packages/sync/    @lichen-wiki/sync, private: the sync logic, platform-free, which the plugin bundles and the lichen CLI will
 scripts/          the sync driven from a terminal, with the filesystem as the vault
 tests/            mirrors src/core/, as packages/sync/tests/ mirrors packages/sync/src/
@@ -39,7 +39,7 @@ tests/            mirrors src/core/, as packages/sync/tests/ mirrors packages/sy
 ## Rules
 
 - Every record rule comes from `@lichen-wiki/client`, so the plugin writes what ingest keeps.
-- A synced folder names files as a lichen.wiki export does. `packages/sync/src/filenames.ts` mirrors lichen.wiki's `src/import-export/filenames.ts` until that moves into `@lichen-wiki/client`: change both or neither.
+- A synced folder names files as a lichen.wiki export does, through `@lichen-wiki/client/filenames`.
 - The plugin words a refusal and lists languages as lichen.wiki does: `describeProblem` (`packages/sync/src/report.ts`) mirrors lichen.wiki's `src/i18n/locales/en.json`, and `COMMON_LANGUAGE_CODES` (`src/host/new-wiki.ts`) its `src/util/languages.ts`. Change both or neither.
 - A pull never loses a local edit: it merges the remote change in, and when the two overlap it writes the local text to a copy in `<wiki> (conflicts)/`. Merging matches exact context only.
 - Every markdown file in a wiki's folder or its subfolders is a note, so a push creates a note from a new one; nothing else the plugin writes goes there. A whole-vault wiki keeps its conflict copies in `Lichen conflicts/`, which it leaves out.

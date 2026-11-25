@@ -19,7 +19,7 @@
 	"dependencies": {
 		"@atcute/client": "^5.1.2",
 		"@atcute/lexicons": "^2.1.1",
-		"@lichen-wiki/client": "^0.3.0",
+		"@lichen-wiki/client": "^0.4.0",
 		"@lichen-wiki/sync": "workspace:*"
 	},
 	"devDependencies": {
