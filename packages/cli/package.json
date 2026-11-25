@@ -1,0 +1,32 @@
+{
+	"name": "@lichen-wiki/cli",
+	"version": "0.1.0",
+	"description": "Sync a folder of markdown with a Lichen wiki, from a terminal or an agent.",
+	"type": "module",
+	"license": "MIT",
+	"homepage": "https://lichen.wiki",
+	"repository": {
+		"type": "git",
+		"url": "git+https://tangled.org/juprodh.me/plugin-lichen-sync",
+		"directory": "packages/cli"
+	},
+	"bin": {
+		"lichen": "dist/lichen.js"
+	},
+	"files": [
+		"dist"
+	],
+	"engines": {
+		"node": ">=22.13"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "bun build src/main.ts --target node --minify --outfile dist/lichen.js",
+		"prepack": "bun run build"
+	},
+	"devDependencies": {
+		"@types/node": "^22"
+	}
+}

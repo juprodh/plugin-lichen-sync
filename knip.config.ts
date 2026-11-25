@@ -11,6 +11,10 @@ const config: KnipConfig = {
 			entry: ["src/*.ts!"],
 			project: ["src/**/*.ts!"],
 		},
+		"packages/cli": {
+			entry: ["src/main.ts!"],
+			project: ["src/**/*.ts!"],
+		},
 	},
 	includeEntryExports: true,
 	treatConfigHintsAsErrors: true,

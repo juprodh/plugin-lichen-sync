@@ -13,7 +13,7 @@
 		"test": "bun test",
 		"lint": "biome check && eslint --max-warnings 0 .",
 		"lint:fix": "biome check --write && eslint --fix --max-warnings 0 .",
-		"typecheck": "tsc && tsc -p tests && tsc -p packages/sync && tsc -p packages/sync/tests",
+		"typecheck": "tsc && tsc -p tests && tsc -p packages/sync && tsc -p packages/sync/tests && tsc -p packages/cli && tsc -p packages/cli/tests",
 		"knip": "knip && knip --production"
 	},
 	"dependencies": {

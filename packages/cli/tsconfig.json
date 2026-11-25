@@ -1,0 +1,10 @@
+{
+	// It runs on Node: its builtins, and no DOM.
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"lib": ["ESNext"],
+		"types": ["node"],
+		"resolveJsonModule": true
+	},
+	"include": ["src"]
+}

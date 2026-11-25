@@ -3,3 +3,7 @@ auto = "disable"
 minimumReleaseAge = 259200 # 3 days in seconds
 # Our own package, so its new releases install at once.
 minimumReleaseAgeExcludes = ["@lichen-wiki/client"]
+
+# Node is in the dev shell only to run the built CLI; scripts' tools stay on Bun.
+[run]
+bun = true

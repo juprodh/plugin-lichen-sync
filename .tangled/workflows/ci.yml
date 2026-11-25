@@ -16,6 +16,8 @@ dependencies:
     - gh
     - git
     - jq
+    # The oldest Node line the CLI supports, which a step below runs it on
+    - nodejs_22
 
 environment:
   GITHUB_REPO: "juprodh/plugin-lichen-sync"
@@ -37,6 +39,16 @@ steps:
     command: "bun test"
   - name: "Build"
     command: "bun run build"
+  # npx fetches the CLI as one file, so it stays small
+  - name: "Build the CLI, within its size budget"
+    command: |
+      set -euo pipefail
+      bun run --cwd packages/cli build
+      size=$(wc -c < packages/cli/dist/lichen.js)
+      echo "lichen.js: $size bytes"
+      test "$size" -le 307200
+  - name: "The CLI runs on Node"
+    command: "node packages/cli/dist/lichen.js --version"
   # GH_TOKEN is a pipeline secret: a fine-grained GitHub token for this repository only, with Contents read and write.
   - name: "Mirror main to GitHub"
     command: |

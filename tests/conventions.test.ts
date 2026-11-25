@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, relative } from "node:path";
 
 const ROOT = join(import.meta.dir, "..");
 
@@ -30,6 +30,17 @@ test("packages/sync/src/ imports neither the plugin, its API nor a runtime's bui
 test("src/core/ imports neither the plugin API nor a runtime's builtins", () => {
 	const bad = imports("src/core").filter(
 		([, spec]) => PLUGIN_API_OR_BUILTIN.test(spec) || spec.includes("/host/"),
+	);
+	expect(bad).toEqual([]);
+});
+
+// The CLI ships alone on npm, so it bundles only its own files, the sync package and npm's.
+test("packages/cli/src/ imports only its package, the sync package and npm", () => {
+	const PACKAGE = join(ROOT, "packages/cli");
+	const bad = imports("packages/cli/src").filter(
+		([file, spec]) =>
+			spec.startsWith(".") &&
+			relative(PACKAGE, join(ROOT, dirname(file), spec)).startsWith(".."),
 	);
 	expect(bad).toEqual([]);
 });

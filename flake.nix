@@ -23,7 +23,11 @@
 
       devShells.${system} = {
         default = pkgs.mkShell {
-          packages = [ pkgs.bun ];
+          # Node runs the built CLI, as CI does
+          packages = [
+            pkgs.bun
+            pkgs.nodejs_22
+          ];
         };
         # A test Obsidian for scripts/obsidian.sh; apart from the default shell, which the checks use.
         obsidian = pkgs.mkShell {
