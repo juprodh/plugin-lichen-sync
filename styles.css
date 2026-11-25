@@ -39,9 +39,7 @@
 	font-size: var(--font-ui-small);
 }
 
-.setting-page:has(> .setting-page-content > .lichen-sync-wiki)
-	> .setting-page-titlebar
-	.setting-page-title {
+.lichen-sync-wiki-page > .setting-page-titlebar .setting-page-title {
 	font-size: var(--font-ui-large);
 }
 

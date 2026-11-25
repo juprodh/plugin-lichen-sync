@@ -149,7 +149,13 @@ export class SettingsTab extends PluginSettingTab {
 					items: [
 						{
 							name: "Folder",
-							render: value(() => folderLabel(this.current(wiki).folder)),
+							render: (setting) => {
+								// The page's title sits outside the content its definition styles.
+								setting.settingEl
+									.closest(".setting-page")
+									?.addClass("lichen-sync-wiki-page");
+								value(() => folderLabel(this.current(wiki).folder))(setting);
+							},
 						},
 						{
 							name: "Access",
