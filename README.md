@@ -14,7 +14,12 @@ Public wikis sync without an account. To send your edits, sign in with your Blue
 
 - A new markdown file in the wiki's folder becomes a new note.
 - When you and lichen.wiki changed the same lines, your version is kept in `<wiki> (conflicts)/` and flagged in settings until you delete it.
+- A note deleted on lichen.wiki goes to your trash, as Obsidian's settings choose. If you had edited it, your version is kept in `<wiki> (conflicts)/` instead.
 - Moving or renaming the folder takes the wiki along. Stopping a sync leaves your files as they are.
+
+## From a terminal
+
+`lichen`, in `packages/cli`, syncs a folder on disk with a wiki the same way, for scripts and agents: see its [README](packages/cli/README.md).
 
 ## Network use
 
