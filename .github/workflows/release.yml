@@ -1,0 +1,42 @@
+# Obsidian installs from GitHub releases, whose tag must equal manifest.json's version.
+# Tangled's CI runs the checks and mirrors main here; this builds, attests and releases a new version.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: version
+        run: |
+          version=$(jq -r .version manifest.json)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "$version" > /dev/null 2>&1; then echo "new=false"; else echo "new=true"; fi >> "$GITHUB_OUTPUT"
+      # The flake's Bun, as in development and Tangled's CI, so the build reproduces anywhere.
+      - if: steps.version.outputs.new == 'true'
+        uses: cachix/install-nix-action@v32
+      - if: steps.version.outputs.new == 'true'
+        run: nix develop path:. -c sh -c 'bun install --frozen-lockfile && bun run build'
+      - if: steps.version.outputs.new == 'true'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            main.js
+            styles.css
+      - if: steps.version.outputs.new == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$VERSION" main.js manifest.json styles.css \
+            --target "$GITHUB_SHA" --title "$VERSION" --generate-notes

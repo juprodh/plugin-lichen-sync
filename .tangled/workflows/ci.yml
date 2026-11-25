@@ -15,7 +15,6 @@ dependencies:
   nixpkgs:
     - gh
     - git
-    - jq
     # The oldest Node line the CLI supports, which a step below runs it on
     - nodejs_22
 
@@ -49,7 +48,8 @@ steps:
       test "$size" -le 307200
   - name: "The CLI runs on Node"
     command: "node packages/cli/dist/lichen.js --version"
-  # GH_TOKEN is a pipeline secret: a fine-grained GitHub token for this repository only, with Contents read and write.
+  # GH_TOKEN is a pipeline secret: a fine-grained GitHub token for this repository only, with Contents and Workflows read and write.
+  # GitHub Actions then releases a new version (.github/workflows/release.yml).
   - name: "Mirror main to GitHub"
     command: |
       set -euo pipefail
@@ -57,12 +57,3 @@ steps:
       # gh hands git the token, so it stays out of the URL and any error that prints it
       gh auth setup-git
       git push "https://github.com/${GITHUB_REPO}.git" "${TANGLED_SHA}:refs/heads/main"
-  # Obsidian installs from GitHub releases, whose tag must equal manifest.json's version.
-  - name: "Release a new version on GitHub"
-    command: |
-      set -euo pipefail
-      if [ "$TANGLED_PIPELINE_KIND" = pull_request ] || [ "${TANGLED_REF_NAME:-}" != main ]; then exit 0; fi
-      version=$(jq -r .version manifest.json)
-      if gh release view "$version" --repo "$GITHUB_REPO" > /dev/null 2>&1; then exit 0; fi
-      gh release create "$version" main.js manifest.json styles.css \
-        --repo "$GITHUB_REPO" --target "$TANGLED_SHA" --title "$version" --generate-notes

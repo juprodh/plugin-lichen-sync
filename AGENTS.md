@@ -18,7 +18,7 @@ bun scripts/devtools.ts eval|open|screenshot|logs    # drive that Obsidian
 
 `bun run lint` runs Biome, then ESLint with `eslint-plugin-obsidianmd`, the rules Obsidian's review checks a submission against. Update that plugin before a release, since the review runs its latest version. TypeScript stays on 6 until `typescript-eslint` supports 7.
 
-To release, raise `version` in `manifest.json` (`x.y.z`, no `v`) and push `main` to tangled: CI mirrors it to GitHub, which Obsidian reads, and releases that version there. To release the CLI, raise `version` in `packages/cli/package.json` and run `bun publish` in `packages/cli`, which builds first.
+To release, raise `version` in `manifest.json` (`x.y.z`, no `v`) and push `main` to tangled: CI mirrors it to GitHub, which Obsidian reads, and GitHub Actions builds, attests and releases that version there (`.github/workflows/release.yml`). To release the CLI, raise `version` in `packages/cli/package.json` and run `bun publish` in `packages/cli`, which builds first.
 
 `@lichen-wiki/client` comes from npm, published from `packages/client` in lichen.wiki's repo (<https://tangled.org/juprodh.me/lichen.wiki>). To try an unpublished change, run `bun link` there and `bun link @lichen-wiki/client` here: the plugin then reads that package's `dist/`, so rerun its `bun run build` after each change. `bun install` brings back the published one. Under the link `bun test` fails in `pull` and `push`, the package resolving a second `@atcute/client` from lichen.wiki's `node_modules`: to run the suite, `bun install` and copy the changed files of that `dist/` into `node_modules/@lichen-wiki/client/dist/` instead.
 
