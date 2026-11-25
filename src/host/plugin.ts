@@ -23,7 +23,7 @@ import {
 	signInFailure,
 } from "@lichen-wiki/sync/oauth";
 import { pullWiki } from "@lichen-wiki/sync/pull";
-import { type PushReport, pushWiki } from "@lichen-wiki/sync/push";
+import { applyPush, type PushReport, planPush } from "@lichen-wiki/sync/push";
 import { RenameLog } from "@lichen-wiki/sync/renames";
 import { describeSync } from "@lichen-wiki/sync/report";
 import {
@@ -409,10 +409,16 @@ export class LichenSyncPlugin extends Plugin {
 			if (did && pds) {
 				const result = await this.followingRenames(
 					uri,
-					(vault, folder, known) =>
-						pushWiki(this.appview, pds, did, vault, uri, folder, known, {
-							sleep,
-						}),
+					async (vault, folder, known) =>
+						applyPush(
+							this.appview,
+							pds,
+							did,
+							uri,
+							known,
+							await planPush(vault, folder, known),
+							{ sleep },
+						),
 				);
 				if (result) {
 					await this.saveSync(uri, result.state);

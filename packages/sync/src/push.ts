@@ -62,6 +62,34 @@ export interface PushReport {
 	readonly heldBack: readonly string[];
 }
 
+interface PlannedEdit {
+	readonly uri: ResourceUri;
+	readonly synced: SyncedNote;
+	readonly content: string;
+}
+
+interface PlannedNote {
+	readonly path: string;
+	readonly title: string;
+	readonly slug: string;
+	readonly content: string;
+}
+
+/** What a push would write, read from the vault alone, with what it cannot write and why. */
+export interface PushPlan {
+	readonly edits: readonly PlannedEdit[];
+	readonly notes: readonly PlannedNote[];
+	/** Synced files found at a new path, which keep their note. */
+	readonly moves: readonly {
+		synced: SyncedNote;
+		uri: ResourceUri;
+		path: string;
+	}[];
+	readonly refused: PushReport["refused"];
+	readonly missing: readonly string[];
+	readonly heldBack: readonly string[];
+}
+
 interface PushRun {
 	readonly appview: Client;
 	readonly pds: Client;
@@ -74,18 +102,79 @@ interface PushRun {
 	readonly report: { [K in keyof PushReport]: PushReport[K][number][] };
 }
 
-/**
- * Edited files become revisions on their notes' heads, and markdown files new
- * in `folder` or its subfolders become notes titled by their filename.
- */
-export async function pushWiki(
+export async function planPush(
+	vault: Vault,
+	folder: string,
+	known: WikiState,
+): Promise<PushPlan> {
+	const edits: PlannedEdit[] = [];
+	const refused: PushReport["refused"][number][] = [];
+	const missing = new Map<ResourceUri, SyncedNote>();
+	for (const [uri, synced] of Object.entries(known) as [
+		ResourceUri,
+		SyncedNote,
+	][]) {
+		const content = await vault.read(synced.path);
+		if (content === null) missing.set(uri, synced);
+		else if (content !== synced.base) {
+			// Attachments come later, so a revision lists no blobs yet.
+			const problem = checkRevision(content, undefined, []);
+			if (problem) refused.push({ path: synced.path, problem });
+			else edits.push({ uri, synced, content });
+		}
+	}
+
+	const syncedPaths = new Set(Object.values(known).map((note) => note.path));
+	const newFiles = new Map<string, string>();
+	for (const path of await vault.list(folder)) {
+		if (syncedPaths.has(path) || !isNotePath(folder, path)) continue;
+		const content = await vault.read(path);
+		if (content !== null) newFiles.set(path, content);
+	}
+
+	const moves = matchMoves(missing, newFiles).map(([uri, path]) => {
+		const synced = missing.get(uri) as SyncedNote;
+		missing.delete(uri);
+		newFiles.delete(path);
+		return { synced, uri, path };
+	});
+
+	const notes: PlannedNote[] = [];
+	const heldBack: string[] = [];
+	for (const [path, content] of newFiles) {
+		if (missing.size > 0) {
+			heldBack.push(path);
+			continue;
+		}
+		const title = titleFromPath(path);
+		const titleCheck = checkNewNoteTitle(title);
+		if ("problem" in titleCheck) {
+			refused.push({ path, problem: titleCheck.problem });
+			continue;
+		}
+		const problem = checkRevision(content, undefined, []);
+		if (problem) refused.push({ path, problem });
+		else notes.push({ path, title, slug: titleCheck.slug, content });
+	}
+
+	return {
+		edits,
+		notes,
+		moves,
+		refused,
+		missing: [...missing.values()].map((note) => note.path),
+		heldBack,
+	};
+}
+
+/** Edits become revisions on their notes' heads, and new files become notes. */
+export async function applyPush(
 	appview: Client,
 	pds: Client,
 	author: Did,
-	vault: Vault,
 	wiki: ResourceUri,
-	folder: string,
 	known: WikiState,
+	plan: PushPlan,
 	wait: WaitOptions,
 ): Promise<{ state: WikiState; report: PushReport }> {
 	if (!(await canWrite(appview, wiki, author))) {
@@ -106,46 +195,18 @@ export async function pushWiki(
 			lost: [],
 			pending: [],
 			taken: [],
-			refused: [],
-			moved: [],
-			missing: [],
-			heldBack: [],
+			refused: [...plan.refused],
+			moved: plan.moves.map((move) => move.path),
+			missing: [...plan.missing],
+			heldBack: [...plan.heldBack],
 		},
 	};
 
-	const missing = new Map<ResourceUri, SyncedNote>();
-	for (const [uri, synced] of Object.entries(known) as [
-		ResourceUri,
-		SyncedNote,
-	][]) {
-		const content = await vault.read(synced.path);
-		if (content === null) missing.set(uri, synced);
-		else if (content !== synced.base) {
-			await pushEdit(run, uri, synced, content);
-		}
-	}
-
-	const syncedPaths = new Set(Object.values(known).map((note) => note.path));
-	const newFiles = new Map<string, string>();
-	for (const path of await vault.list(folder)) {
-		if (syncedPaths.has(path) || !isNotePath(folder, path)) continue;
-		const content = await vault.read(path);
-		if (content !== null) newFiles.set(path, content);
-	}
-
-	for (const [uri, path] of matchMoves(missing, newFiles)) {
-		const synced = missing.get(uri) as SyncedNote;
+	for (const edit of plan.edits) await pushEdit(run, edit);
+	for (const { synced, uri, path } of plan.moves) {
 		run.state[uri] = { ...synced, path };
-		run.report.moved.push(path);
-		missing.delete(uri);
-		newFiles.delete(path);
 	}
-	run.report.missing.push(...[...missing.values()].map((note) => note.path));
-
-	for (const [path, content] of newFiles) {
-		if (missing.size > 0) run.report.heldBack.push(path);
-		else await createNote(run, path, content);
-	}
+	for (const note of plan.notes) await createNote(run, note);
 	return { state: run.state, report: run.report };
 }
 
@@ -174,16 +235,8 @@ function matchMoves(
 
 async function pushEdit(
 	run: PushRun,
-	uri: ResourceUri,
-	synced: SyncedNote,
-	content: string,
+	{ uri, synced, content }: PlannedEdit,
 ): Promise<void> {
-	// Attachments come later, so a revision lists no blobs yet.
-	const problem = checkRevision(content, undefined, []);
-	if (problem) {
-		run.report.refused.push({ path: synced.path, problem });
-		return;
-	}
 	const current = await getNote(run.appview, uri);
 	if (current === null) return;
 	if (current.latestRevisionUri !== synced.head) {
@@ -221,32 +274,17 @@ async function pushEdit(
 
 async function createNote(
 	run: PushRun,
-	path: string,
-	content: string,
+	{ path, title, slug, content }: PlannedNote,
 ): Promise<void> {
-	const title = titleFromPath(path);
-	const titleCheck = checkNewNoteTitle(title);
-	if ("problem" in titleCheck) {
-		run.report.refused.push({ path, problem: titleCheck.problem });
-		return;
-	}
-	const problem = checkRevision(content, undefined, []);
-	if (problem) {
-		run.report.refused.push({ path, problem });
-		return;
-	}
-	if (
-		run.slugs.has(titleCheck.slug) ||
-		(await isSlugTaken(run.appview, run.wiki, titleCheck.slug))
-	) {
+	if (run.slugs.has(slug) || (await isSlugTaken(run.appview, run.wiki, slug))) {
 		run.report.taken.push(path);
 		return;
 	}
-	run.slugs.add(titleCheck.slug);
+	run.slugs.add(slug);
 
 	const writes = newNoteWrites(run.author, {
 		wikiRef: run.wiki,
-		slug: titleCheck.slug,
+		slug,
 		title,
 		content,
 		createdAt: new Date().toISOString(),

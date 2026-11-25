@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { pullWiki } from "../src/pull.ts";
-import { pushWiki } from "../src/push.ts";
+import { applyPush, planPush } from "../src/push.ts";
 import {
 	fakeAppview,
 	fakeNote,
@@ -34,18 +34,34 @@ function push(
 ) {
 	const pds = fakePds(notes, { ingest });
 	const appview = fakeAppview(notes, { editors: editor ? [AUTHOR] : [] });
-	const result = pushWiki(
-		appview.client,
-		pds.client,
-		AUTHOR,
-		vault,
-		WIKI,
-		folder,
-		state,
-		noWait,
+	const result = planPush(vault, folder, state).then((plan) =>
+		applyPush(appview.client, pds.client, AUTHOR, WIKI, state, plan, noWait),
 	);
 	return { pds, result };
 }
+
+// The CLI lists this before asking for a message, so it must hold what a push writes and nothing it refuses.
+test("plans from the vault alone the edits and notes a push writes, and refuses the rest", async () => {
+	const { vault, files, state } = await pulled([fakeNote("a"), fakeNote("b")]);
+	files.set("notes/a.md", "a body, edited");
+	files.set("notes/Getting Started.md", "hello");
+	files.set("notes/!!!.md", "a title with no slug");
+	const tooLong = "x".repeat(1_000_001);
+	files.set("notes/b.md", tooLong);
+	files.set("notes/Huge.md", tooLong);
+
+	const plan = await planPush(vault, "notes", state);
+
+	expect(plan.edits.map((edit) => edit.synced.path)).toEqual(["notes/a.md"]);
+	expect(plan.notes.map((note) => [note.path, note.slug])).toEqual([
+		["notes/Getting Started.md", "getting-started"],
+	]);
+	expect(plan.refused.map((refusal) => refusal.path).sort()).toEqual([
+		"notes/!!!.md",
+		"notes/Huge.md",
+		"notes/b.md",
+	]);
+});
 
 test("pushes an edit as a revision on the head and syncs once it is the head", async () => {
 	const { notes, vault, files, state } = await pulled();
