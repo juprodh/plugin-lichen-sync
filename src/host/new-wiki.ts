@@ -1,3 +1,8 @@
+import { wikiSlugFrom } from "@lichen-wiki/client/check";
+import {
+	type LanguageOption,
+	languageOptions,
+} from "@lichen-wiki/client/languages";
 import { toWikiSlug } from "@lichen-wiki/client/slug";
 import type { NewWikiFields } from "@lichen-wiki/sync/new-wiki";
 import {
@@ -7,20 +12,6 @@ import {
 	Setting,
 	type TextComponent,
 } from "obsidian";
-
-// lichen.wiki's quick picks (lichen-repo/src/util/languages.ts); the wiki's settings there offer every language.
-const COMMON_LANGUAGE_CODES = [
-	"en",
-	"fr",
-	"es",
-	"de",
-	"pt",
-	"ja",
-	"zh",
-	"ko",
-	"ar",
-	"eo",
-];
 
 interface NewWikiForm {
 	readonly name: string;
@@ -67,7 +58,7 @@ export class NewWikiModal extends Modal {
 		const addressSetting = new Setting(contentEl).setName("Address");
 		const showAddress = () =>
 			addressSetting.setDesc(
-				`${this.form.addressPrefix}${this.slug.trim() || toWikiSlug(this.name)}, fixed once created.`,
+				`${this.form.addressPrefix}${wikiSlugFrom({ name: this.name, slug: this.slug })}, fixed once created.`,
 			);
 		addressSetting.addText((text) => {
 			addressInput = text;
@@ -82,8 +73,8 @@ export class NewWikiModal extends Modal {
 			.setName("Language")
 			.setDesc("The language its notes are written in.")
 			.addDropdown((dropdown) => {
-				for (const code of languageChoices(this.language)) {
-					dropdown.addOption(code, languageLabel(code));
+				for (const { code, label } of languageChoices(this.language)) {
+					dropdown.addOption(code, label);
 				}
 				dropdown
 					.setValue(this.language)
@@ -131,19 +122,11 @@ export class NewWikiModal extends Modal {
 	}
 }
 
-function languageChoices(current: string): string[] {
-	return COMMON_LANGUAGE_CODES.includes(current)
-		? COMMON_LANGUAGE_CODES
-		: [current, ...COMMON_LANGUAGE_CODES];
-}
-
-// The language's own name, "Français (fr)", as lichen.wiki's language switcher shows it.
-function languageLabel(code: string): string {
-	try {
-		const name = new Intl.DisplayNames([code], { type: "language" }).of(code);
-		if (!name) return code;
-		return `${name.charAt(0).toLocaleUpperCase(code)}${name.slice(1)} (${code})`;
-	} catch {
-		return code;
-	}
+// lichen.wiki's picker, in the plugin's English: the common languages, then every other.
+function languageChoices(current: string): LanguageOption[] {
+	const { common, all } = languageOptions("en");
+	const choices = [...common, ...all];
+	return choices.some((choice) => choice.code === current)
+		? choices
+		: [{ code: current, label: current }, ...choices];
 }

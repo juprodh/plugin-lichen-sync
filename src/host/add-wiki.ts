@@ -1,10 +1,10 @@
 import type { Client } from "@atcute/client";
 import type { Did } from "@atcute/lexicons/syntax";
+import { describeProblem } from "@lichen-wiki/client/problems";
 import { canWrite } from "@lichen-wiki/sync/appview";
 import { folderName } from "@lichen-wiki/sync/folders";
 import type { NewWikiFields, NewWikiOutcome } from "@lichen-wiki/sync/new-wiki";
 import { plural } from "@lichen-wiki/sync/plural";
-import { describeProblem } from "@lichen-wiki/sync/report";
 import type { WikiChoice } from "@lichen-wiki/sync/wiki-search";
 import { type App, Notice } from "obsidian";
 import {
@@ -72,7 +72,7 @@ function openNewWiki(
 				return `Creating the wiki failed. ${err instanceof Error ? err.message : String(err)}`;
 			}
 			if (outcome === null) return "Sign in again to create a wiki.";
-			if ("problem" in outcome) return describeProblem(outcome.problem);
+			if ("problem" in outcome) return describeProblem(outcome.problem, "en");
 			if (!outcome.seen) {
 				new Notice(
 					`Lichen Sync: ${outcome.wiki.name} is created, but lichen.wiki has not shown it yet. If its first sync fails, sync it again in a minute.`,

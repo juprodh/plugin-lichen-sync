@@ -1,11 +1,12 @@
 import type { Client } from "@atcute/client";
 import type { Did, ResourceUri } from "@atcute/lexicons/syntax";
 import { formatAtUri } from "@lichen-wiki/client/at-uri";
-import { type CheckProblem, checkNewWiki } from "@lichen-wiki/client/check";
+import { checkNewWiki } from "@lichen-wiki/client/check";
 import { COLLECTIONS } from "@lichen-wiki/client/collections";
 import { WikiLichenWiki } from "@lichen-wiki/client/lexicons/index";
 import { getRecordValue } from "@lichen-wiki/client/pds-read";
 import { applyCreates } from "@lichen-wiki/client/pds-write";
+import type { Problem } from "@lichen-wiki/client/problems";
 import { newWikiWrites } from "@lichen-wiki/client/writes";
 import { getWiki } from "./appview.ts";
 import { pollUntil, type WaitOptions } from "./wait.ts";
@@ -23,12 +24,8 @@ export interface WikiOwner {
 	readonly handle: string | null;
 }
 
-export type NewWikiProblem =
-	| CheckProblem
-	| { code: "wikiSlugExists"; slug: string };
-
 export type NewWikiOutcome =
-	| { readonly problem: NewWikiProblem }
+	| { readonly problem: Problem }
 	/** `seen` is false when lichen.wiki had not taken the wiki in when the wait ended. */
 	| { readonly wiki: WikiChoice; readonly seen: boolean };
 
