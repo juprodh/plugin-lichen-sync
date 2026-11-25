@@ -4,7 +4,7 @@ import { getNote, listNotes } from "./appview.ts";
 import { claimPath, conflictCopyPath, usedStems } from "./filenames.ts";
 import { mergeText } from "./merge.ts";
 import type { SyncedNote, WikiState } from "./sync-state.ts";
-import type { Vault } from "./vault.ts";
+import { readNote, type Vault } from "./vault.ts";
 
 export interface PullReport {
 	readonly written: readonly string[];
@@ -44,7 +44,7 @@ export async function pullWiki(
 		if (note === null) continue;
 
 		const path = synced ? synced.path : claimPath(folder, note, used);
-		const local = await vault.read(path);
+		const local = await readNote(vault, path);
 
 		if (local === note.content) {
 			// Already the head: a lost sync state, or the same edit made on both sides.

@@ -63,6 +63,21 @@ test("plans from the vault alone the edits and notes a push writes, and refuses 
 	]);
 });
 
+test("reads a file saved with CRLF as the note's text, and an edit to it as LF", async () => {
+	const { vault, files, state } = await pulled([
+		fakeNote("a", { content: "one\ntwo\n" }),
+		fakeNote("b", { content: "one\ntwo\n" }),
+	]);
+	files.set("notes/a.md", "one\r\ntwo\r\n");
+	files.set("notes/b.md", "one\r\nTWO\r\n");
+
+	const plan = await planPush(vault, "notes", state);
+
+	expect(
+		plan.edits.map(({ synced, content }) => [synced.path, content]),
+	).toEqual([["notes/b.md", "one\nTWO\n"]]);
+});
+
 test("pushes an edit as a revision on the head and syncs once it is the head", async () => {
 	const { notes, vault, files, state } = await pulled();
 	files.set("notes/a.md", "a body, edited");

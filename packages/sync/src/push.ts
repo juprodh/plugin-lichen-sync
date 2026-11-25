@@ -18,7 +18,7 @@ import { canWrite, getNote, isSlugTaken } from "./appview.ts";
 import { titleFromPath } from "./filenames.ts";
 import { isNotePath } from "./folders.ts";
 import type { SyncedNote, WikiState } from "./sync-state.ts";
-import type { Vault } from "./vault.ts";
+import { readNote, type Vault } from "./vault.ts";
 import { pollUntil, type WaitOptions } from "./wait.ts";
 
 type HeadOutcome = "accepted" | "lost" | "timeout";
@@ -114,7 +114,7 @@ export async function planPush(
 		ResourceUri,
 		SyncedNote,
 	][]) {
-		const content = await vault.read(synced.path);
+		const content = await readNote(vault, synced.path);
 		if (content === null) missing.set(uri, synced);
 		else if (content !== synced.base) {
 			// Attachments come later, so a revision lists no blobs yet.
@@ -128,7 +128,7 @@ export async function planPush(
 	const newFiles = new Map<string, string>();
 	for (const path of await vault.list(folder)) {
 		if (syncedPaths.has(path) || !isNotePath(folder, path)) continue;
-		const content = await vault.read(path);
+		const content = await readNote(vault, path);
 		if (content !== null) newFiles.set(path, content);
 	}
 

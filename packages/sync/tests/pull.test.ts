@@ -83,6 +83,31 @@ test("a moved head merges into a file edited here, or leaves a conflict copy", a
 	expect(after[noteUri("a")]?.base).toBe("one\nTWO there\nthree\n");
 });
 
+test("a file saved with CRLF and otherwise unchanged takes the remote change", async () => {
+	const notes = [fakeNote("a", { content: "one\ntwo\n" })];
+	const { vault, files } = memoryVault();
+	const { state } = await pullWiki(
+		fakeAppview(notes).client,
+		vault,
+		WIKI,
+		"notes",
+		{},
+	);
+	files.set("notes/a.md", "one\r\ntwo\r\n");
+	notes[0] = fakeNote("a", { content: "one\nTWO\n", head: revisionUri("a-2") });
+
+	const { report } = await pullWiki(
+		fakeAppview(notes).client,
+		vault,
+		WIKI,
+		"notes",
+		state,
+	);
+
+	expect(report.written).toEqual(["notes/a.md"]);
+	expect(files.get("notes/a.md")).toBe("one\nTWO\n");
+});
+
 test("records the head getNote returned, not the listed one", async () => {
 	const { client } = fakeAppview([
 		fakeNote("a", {
