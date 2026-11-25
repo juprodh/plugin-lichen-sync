@@ -8,6 +8,8 @@ const pull: PullReport = {
 	merged: [],
 	conflictCopies: [],
 	recoveredCopies: [],
+	deleted: [],
+	deletedCopies: [],
 	gone: [],
 };
 
@@ -48,5 +50,17 @@ test("each thing needing the user gets its own line", () => {
 		"Lichen Sync: Garden, 1 note updated, 2 notes sent.",
 		"Changed on lichen.wiki meanwhile; sync again to merge and send: w/b.md",
 		"w/long.md: Title is too long (max 300 characters).",
+	]);
+});
+
+test("a pull that removed deleted notes says so, and points at an edit it kept", () => {
+	const text = describeSync(
+		"Garden",
+		{ ...pull, deleted: ["w/d.md"], deletedCopies: ["w (conflicts)/e.md"] },
+		null,
+	);
+	expect(text.split("\n")).toEqual([
+		"Lichen Sync: Garden, 1 note updated, 1 note removed.",
+		"Deleted on lichen.wiki after an edit here; your version is in: w (conflicts)/e.md",
 	]);
 });

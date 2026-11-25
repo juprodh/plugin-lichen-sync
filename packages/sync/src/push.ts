@@ -249,8 +249,8 @@ async function pushEdit(
 	{ uri, synced, content }: PlannedEdit,
 ): Promise<void> {
 	const current = await getNote(run.appview, uri);
-	if (current === null) return;
-	if (current.latestRevisionUri !== synced.head) {
+	// Deleted since the pull, which the next pull settles.
+	if (current === null || current.latestRevisionUri !== synced.head) {
 		run.report.behind.push(synced.path);
 		return;
 	}

@@ -18,6 +18,11 @@ export function hostVault(app: App): Vault {
 			}
 			await app.vault.create(normalized, content);
 		},
+		async remove(path) {
+			const file = app.vault.getFileByPath(normalizePath(path));
+			// The user's choice of trash: Obsidian's, the system's, or none.
+			if (file) await app.fileManager.trashFile(file);
+		},
 		async list(folder) {
 			const root = folder ? normalizePath(folder) : "";
 			return app.vault

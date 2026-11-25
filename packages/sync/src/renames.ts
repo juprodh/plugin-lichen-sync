@@ -34,6 +34,7 @@ export class RenameLog {
 		return {
 			read: (path) => vault.read(this.follow(path)),
 			write: (path, content) => vault.write(this.follow(path), content),
+			remove: (path) => vault.remove(this.follow(path)),
 			list: async (folder) =>
 				(await vault.list(this.follow(folder))).map((path) =>
 					this.unfollow(path),

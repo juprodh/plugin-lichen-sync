@@ -154,6 +154,17 @@ test("writes nothing on a head that moved since the last sync", async () => {
 	expect(pds.records).toEqual([]);
 });
 
+test("writes nothing on a note deleted since the last sync, leaving it to the next pull", async () => {
+	const { notes, vault, files, state } = await pulled();
+	files.set("notes/a.md", "a body, edited");
+	notes[0] = fakeNote("a", { deleted: true });
+
+	const { pds, result } = push(notes, vault, state);
+
+	expect((await result).report.behind).toEqual(["notes/a.md"]);
+	expect(pds.records).toEqual([]);
+});
+
 test("keeps the sync state of a revision the appview never took as head", async () => {
 	const { notes, vault, files, state } = await pulled();
 	files.set("notes/a.md", "a body, edited");

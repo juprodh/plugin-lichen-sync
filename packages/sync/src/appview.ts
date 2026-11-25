@@ -67,12 +67,18 @@ export async function searchWikis(appview: Client, q: string, limit: number) {
 	return wikis;
 }
 
+/** Deleted notes too, marked by their `status`, so a pull can remove their files. */
 export async function* listNotes(appview: Client, wiki: ResourceUri) {
 	let cursor: string | undefined;
 	do {
 		const page = await ok(
 			appview.call(WikiLichenListNotes, {
-				params: { wiki, limit: PAGE_SIZE, ...(cursor ? { cursor } : {}) },
+				params: {
+					wiki,
+					limit: PAGE_SIZE,
+					includeDeleted: true,
+					...(cursor ? { cursor } : {}),
+				},
 			}),
 		);
 		yield* page.notes;

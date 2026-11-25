@@ -14,6 +14,10 @@ export interface PullReport {
 	readonly conflictCopies: readonly string[];
 	/** Copies of files found at a note's name with no sync state to merge from. */
 	readonly recoveredCopies: readonly string[];
+	/** Files of notes deleted on lichen.wiki, removed here. */
+	readonly deleted: readonly string[];
+	/** Copies of local edits to notes deleted on lichen.wiki, their files removed. */
+	readonly deletedCopies: readonly string[];
 	/** Synced notes the wiki no longer lists, their files left as they are. */
 	readonly gone: readonly string[];
 }
@@ -31,6 +35,8 @@ export async function pullWiki(
 		merged: [] as string[],
 		conflictCopies: [] as string[],
 		recoveredCopies: [] as string[],
+		deleted: [] as string[],
+		deletedCopies: [] as string[],
 	};
 	const listed = new Set<string>();
 	const used = usedStems(Object.values(known).map((note) => note.path));
@@ -38,6 +44,11 @@ export async function pullWiki(
 	for await (const view of listNotes(appview, wiki)) {
 		listed.add(view.uri);
 		const synced = known[view.uri];
+		if (view.status === "deleted") {
+			if (synced) await removeDeleted(vault, folder, synced, report);
+			delete state[view.uri];
+			continue;
+		}
 		if (synced?.head === view.latestRevisionUri) continue;
 
 		const note = await getNote(appview, view.uri);
@@ -81,6 +92,25 @@ export async function pullWiki(
 		.filter(([uri]) => !listed.has(uri))
 		.map(([, note]) => note.path);
 	return { state, report: { ...report, gone } };
+}
+
+// lichen.wiki keeps a deleted note's history, so only a local edit needs keeping here.
+async function removeDeleted(
+	vault: Vault,
+	folder: string,
+	synced: SyncedNote,
+	report: { deleted: string[]; deletedCopies: string[] },
+): Promise<void> {
+	const local = await readNote(vault, synced.path);
+	if (local === null) return;
+	if (local !== synced.base) {
+		report.deletedCopies.push(
+			await writeConflictCopy(vault, folder, synced.path, local),
+		);
+	} else {
+		report.deleted.push(synced.path);
+	}
+	await vault.remove(synced.path);
 }
 
 async function writeConflictCopy(

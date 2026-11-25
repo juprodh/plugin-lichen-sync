@@ -108,6 +108,60 @@ test("a file saved with CRLF and otherwise unchanged takes the remote change", a
 	expect(files.get("notes/a.md")).toBe("one\nTWO\n");
 });
 
+test("a note deleted on lichen.wiki leaves the folder and the sync state, an edit to it kept as a copy", async () => {
+	const notes = [fakeNote("a"), fakeNote("b"), fakeNote("c")];
+	const { vault, files } = memoryVault();
+	const { state } = await pullWiki(
+		fakeAppview(notes).client,
+		vault,
+		WIKI,
+		"notes",
+		{},
+	);
+	files.set("notes/b.md", "b body, edited");
+	files.delete("notes/c.md");
+	for (const note of notes) note.deleted = true;
+
+	const { state: after, report } = await pullWiki(
+		fakeAppview(notes).client,
+		vault,
+		WIKI,
+		"notes",
+		state,
+	);
+
+	expect([...files.keys()]).toEqual(["notes (conflicts)/b.md"]);
+	expect(files.get("notes (conflicts)/b.md")).toBe("b body, edited");
+	expect(report.deleted).toEqual(["notes/a.md"]);
+	expect(report.deletedCopies).toEqual(["notes (conflicts)/b.md"]);
+	expect(report.gone).toEqual([]);
+	expect(after).toEqual({});
+});
+
+test("a note the wiki no longer lists at all keeps its file and sync state", async () => {
+	const notes = [fakeNote("a")];
+	const { vault, files } = memoryVault();
+	const { state } = await pullWiki(
+		fakeAppview(notes).client,
+		vault,
+		WIKI,
+		"notes",
+		{},
+	);
+
+	const { state: after, report } = await pullWiki(
+		fakeAppview([]).client,
+		vault,
+		WIKI,
+		"notes",
+		state,
+	);
+
+	expect(report.gone).toEqual(["notes/a.md"]);
+	expect(files.get("notes/a.md")).toBe("a body");
+	expect(after).toEqual(state);
+});
+
 test("records the head getNote returned, not the listed one", async () => {
 	const { client } = fakeAppview([
 		fakeNote("a", {

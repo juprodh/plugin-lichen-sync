@@ -12,6 +12,8 @@ export function describeSync(
 	const updated = pull.written.length + pull.merged.length;
 	const pushed = push ? push.pushed.length + push.created.length : 0;
 	const counts = [`${notes(updated)} updated`];
+	if (pull.deleted.length > 0)
+		counts.push(`${notes(pull.deleted.length)} removed`);
 	if (push) counts.push(`${notes(pushed)} sent`);
 	const lines = [`Lichen Sync: ${label}, ${counts.join(", ")}.`];
 	const add = (paths: readonly string[], text: string) => {
@@ -22,6 +24,10 @@ export function describeSync(
 		"Edited here and on lichen.wiki at once; your version is in",
 	);
 	add(pull.recoveredCopies, "Found without sync state; the earlier text is in");
+	add(
+		pull.deletedCopies,
+		"Deleted on lichen.wiki after an edit here; your version is in",
+	);
 	add(pull.gone, "No longer on lichen.wiki, left as is");
 	if (!push) return lines.join("\n");
 	add(

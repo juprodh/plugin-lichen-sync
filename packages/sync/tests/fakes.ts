@@ -78,13 +78,16 @@ export function fakeAppview(
 				case "/xrpc/wiki.lichen.listNotes":
 					return json({
 						notes: notes
-							.filter((note) => !note.deleted)
+							.filter(
+								(note) => !note.deleted || param("includeDeleted") === "true",
+							)
 							.map((note) => ({
 								uri: note.uri,
 								slug: note.slug,
 								title: note.title,
 								latestRevisionUri: note.listedHead ?? note.head,
 								updatedAt: STAMP,
+								...(note.deleted ? { status: "deleted" } : {}),
 							})),
 					});
 				case "/xrpc/wiki.lichen.getNote": {
@@ -267,6 +270,9 @@ export function memoryVault(files: Record<string, string> = {}) {
 		read: async (path) => store.get(path) ?? null,
 		write: async (path, content) => {
 			store.set(path, content);
+		},
+		remove: async (path) => {
+			store.delete(path);
 		},
 		list: async (folder) =>
 			[...store.keys()].filter(

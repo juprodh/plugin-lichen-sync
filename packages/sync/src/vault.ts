@@ -8,6 +8,8 @@ export interface Vault {
 	write(path: string, content: string): Promise<void>;
 	/** The paths of the markdown files in `folder` ("" for the root) and its subfolders, none when it is missing. */
 	list(folder: string): Promise<string[]>;
+	/** Removes the file at `path`, to the host's trash where it has one. */
+	remove(path: string): Promise<void>;
 }
 
 /** A note's text as lichen.wiki stores it, with the line endings its editor and import write; null when no file is at `path`. */
