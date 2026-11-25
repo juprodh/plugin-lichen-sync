@@ -36,6 +36,23 @@ test("publishes the wiki and its owner's grant in one commit, then waits until t
 	expect(pds.records[0]?.record.visibility).toBe("public");
 });
 
+test("stores a description as lichen.wiki does", async () => {
+	const description = async (typed: string) => {
+		const pds = fakePds([]);
+		await createWiki(
+			fakeWikiAppview(pds).client,
+			pds.client,
+			owner,
+			{ name: "Garden", slug: "", language: "en", description: typed },
+			noWait,
+		);
+		return pds.records[0]?.record.description;
+	};
+
+	expect(await description("  What grows where  ")).toBe("What grows where");
+	expect(await description(" ")).toBeUndefined();
+});
+
 test("takes the address typed over the one the name gives", async () => {
 	const pds = fakePds([]);
 

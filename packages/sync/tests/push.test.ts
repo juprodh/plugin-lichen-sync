@@ -30,12 +30,26 @@ function push(
 	notes: ReturnType<typeof fakeNote>[],
 	vault: ReturnType<typeof memoryVault>["vault"],
 	state: Awaited<ReturnType<typeof pulled>>["state"],
-	{ editor = true, ingest = true, folder = "notes" } = {},
+	{
+		editor = true,
+		ingest = true,
+		folder = "notes",
+		message = undefined as string | undefined,
+	} = {},
 ) {
 	const pds = fakePds(notes, { ingest });
 	const appview = fakeAppview(notes, { editors: editor ? [AUTHOR] : [] });
 	const result = planPush(vault, folder, state).then((plan) =>
-		applyPush(appview.client, pds.client, AUTHOR, WIKI, state, plan, noWait),
+		applyPush(
+			appview.client,
+			pds.client,
+			AUTHOR,
+			WIKI,
+			state,
+			plan,
+			noWait,
+			message,
+		),
 	);
 	return { pds, result };
 }
@@ -96,6 +110,37 @@ test("pushes an edit as a revision on the head and syncs once it is the head", a
 		"wiki.lichen.noteRevision",
 		"wiki.lichen.noteSnapshot",
 	]);
+});
+
+test("puts the sync's message on every revision it writes, and none for a blank one", async () => {
+	const revisionMessages = async (message: string | undefined) => {
+		const { notes, vault, files, state } = await pulled();
+		files.set("notes/a.md", "a body, edited");
+		files.set("notes/Getting Started.md", "hello");
+		const { pds, result } = push(notes, vault, state, { message });
+		await result;
+		return pds.records
+			.filter((r) => r.collection === "wiki.lichen.noteRevision")
+			.map((r) => r.record.message);
+	};
+
+	expect(await revisionMessages("Planting notes")).toEqual([
+		"Planting notes",
+		"Planting notes",
+	]);
+	expect(await revisionMessages(" ")).toEqual([undefined, undefined]);
+});
+
+test("refuses a message lichen.wiki would refuse, writing nothing", async () => {
+	const { notes, vault, files, state } = await pulled();
+	files.set("notes/a.md", "a body, edited");
+	files.set("notes/new.md", "hello");
+	const { pds, result } = push(notes, vault, state, {
+		message: "x".repeat(1025),
+	});
+
+	await expect(result).rejects.toThrow("Edit summary is too long (max 1024");
+	expect(pds.records).toEqual([]);
 });
 
 test("writes nothing on a head that moved since the last sync", async () => {

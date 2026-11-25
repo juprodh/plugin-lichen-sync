@@ -3,6 +3,7 @@ import type { Did, ResourceUri } from "@atcute/lexicons/syntax";
 import { formatAtUri } from "@lichen-wiki/client/at-uri";
 import { checkNewWiki } from "@lichen-wiki/client/check";
 import { COLLECTIONS } from "@lichen-wiki/client/collections";
+import { wikiDescription } from "@lichen-wiki/client/fields";
 import { WikiLichenWiki } from "@lichen-wiki/client/lexicons/index";
 import { getRecordValue } from "@lichen-wiki/client/pds-read";
 import { applyCreates } from "@lichen-wiki/client/pds-write";
@@ -17,6 +18,7 @@ export interface NewWikiFields {
 	/** "" takes the address from the name. */
 	readonly slug: string;
 	readonly language: string;
+	readonly description?: string;
 }
 
 export interface WikiOwner {
@@ -47,10 +49,12 @@ export async function createWiki(
 		return { problem: { code: "wikiSlugExists", slug } };
 	}
 
+	const description = wikiDescription(fields.description ?? "");
 	const writes = newWikiWrites(owner.did, slug, {
 		name: fields.name,
 		visibility: "public",
 		language: fields.language,
+		description,
 		createdAt: new Date().toISOString(),
 	});
 	await applyCreates(pds, [writes.wiki, writes.grant]);

@@ -7,7 +7,9 @@ import {
 	checkRevision,
 } from "@lichen-wiki/client/check";
 import { createDiff } from "@lichen-wiki/client/diff";
+import { revisionMessage } from "@lichen-wiki/client/fields";
 import { applyCreates, putRecord } from "@lichen-wiki/client/pds-write";
+import { describeProblem } from "@lichen-wiki/client/problems";
 import {
 	newNoteWrites,
 	type RecordWrite,
@@ -96,6 +98,7 @@ interface PushRun {
 	readonly author: Did;
 	readonly wiki: ResourceUri;
 	readonly wait: WaitOptions;
+	readonly message: string | undefined;
 	readonly state: Record<string, SyncedNote>;
 	/** Slugs this run created notes for: two files in different subfolders can share a name. */
 	readonly slugs: Set<string>;
@@ -176,9 +179,16 @@ export async function applyPush(
 	known: WikiState,
 	plan: PushPlan,
 	wait: WaitOptions,
+	typedMessage?: string,
 ): Promise<{ state: WikiState; report: PushReport }> {
 	if (!(await canWrite(appview, wiki, author))) {
 		throw new Error(`${author} cannot edit ${wiki}`);
+	}
+	const message = revisionMessage(typedMessage);
+	// The check lichen.wiki runs on an edit, on every write before the first: ingest drops a refused one silently.
+	for (const { content } of [...plan.edits, ...plan.notes]) {
+		const problem = checkRevision(content, message, []);
+		if (problem) throw new Error(describeProblem(problem, "en"));
 	}
 	const run: PushRun = {
 		appview,
@@ -186,6 +196,7 @@ export async function applyPush(
 		author,
 		wiki,
 		wait,
+		message,
 		state: { ...known },
 		slugs: new Set(),
 		report: {
@@ -249,6 +260,7 @@ async function pushEdit(
 		noteRef: uri,
 		parentRevision: current.latestRevisionUri,
 		diff: createDiff(current.content, content),
+		message: run.message,
 		createdAt,
 	});
 	await putRecord(run.pds, revision);
@@ -287,6 +299,7 @@ async function createNote(
 		slug,
 		title,
 		content,
+		message: run.message,
 		createdAt: new Date().toISOString(),
 	});
 	await applyCreates(run.pds, [writes.note, writes.revision]);
