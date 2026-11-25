@@ -2,6 +2,8 @@ import { parseArgs } from "node:util";
 import { version } from "../package.json";
 import { type Ask, terminalAsk } from "./ask.ts";
 import type { Command, Context } from "./command.ts";
+import { login } from "./commands/login.ts";
+import { logout } from "./commands/logout.ts";
 import { Output, type Writer, wantsColor } from "./output.ts";
 
 export interface Terminal {
@@ -14,7 +16,7 @@ export interface Terminal {
 	readonly ask?: Ask | null;
 }
 
-const COMMANDS: Readonly<Record<string, Command>> = {};
+const COMMANDS: Readonly<Record<string, Command>> = { login, logout };
 
 const SHARED = {
 	json: { type: "boolean" },

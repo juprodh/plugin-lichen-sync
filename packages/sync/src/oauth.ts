@@ -9,6 +9,7 @@ import { type Did, isDid } from "@atcute/lexicons/syntax";
 import {
 	OAuthCallbackError,
 	OAuthClient,
+	type PublicClientMetadata,
 	type Store,
 	type StoredSession,
 	type StoredState,
@@ -25,13 +26,16 @@ export type Sessions = Readonly<Record<Did, StoredSession>>;
 /** Sign-ins waiting on the browser, keyed by their OAuth `state`. */
 export type PendingSignIns = Readonly<Record<string, StoredState>>;
 
-/** The OAuth client lichen.wiki hosts for the plugin, its sessions and sign-ins kept where the host saves them. */
-export function lichenOAuth(stores: {
-	sessions: Saved<Sessions>;
-	signIns: Saved<PendingSignIns>;
-}): OAuthClient {
+/** An OAuth client for Lichen, by default the one lichen.wiki hosts for the plugin, its sessions and sign-ins kept where the host saves them. */
+export function lichenOAuth(
+	stores: {
+		sessions: Saved<Sessions>;
+		signIns: Saved<PendingSignIns>;
+	},
+	metadata: PublicClientMetadata = syncPluginClientMetadata(LICHEN_ORIGIN),
+): OAuthClient {
 	return new OAuthClient({
-		metadata: syncPluginClientMetadata(LICHEN_ORIGIN),
+		metadata,
 		actorResolver: new LocalActorResolver({
 			handleResolver: new XrpcHandleResolver({ serviceUrl: BSKY_APPVIEW }),
 			didDocumentResolver: new CompositeDidDocumentResolver({
