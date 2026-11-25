@@ -16,7 +16,8 @@
 		"noUnusedParameters": true,
 		"noPropertyAccessFromIndexSignature": true,
 		"exactOptionalPropertyTypes": true,
-		"isolatedModules": true
+		"isolatedModules": true,
+		"paths": { "@oomfware/eval": ["./src/no-eval.ts"] }
 	},
 	"include": ["src"]
 }

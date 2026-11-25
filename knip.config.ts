@@ -6,6 +6,8 @@ const config: KnipConfig = {
 		".": {
 			entry: ["src/main.ts!", "scripts/*.ts"],
 			project: ["src/**/*.ts!"],
+			// tsconfig.json's paths load it in place of a package, which knip cannot follow.
+			ignore: ["src/no-eval.ts"],
 		},
 		"packages/sync": {
 			entry: ["src/*.ts!"],
