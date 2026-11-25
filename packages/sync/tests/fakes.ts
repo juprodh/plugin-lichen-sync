@@ -127,6 +127,9 @@ export function fakeWikiAppview(
 			const params = new URL(pathname, "https://appview.test").searchParams;
 			const uri = params.get("uri") ?? "";
 			const viewer = params.get("viewer");
+			if (!uri.includes("/wiki.lichen.wiki/")) {
+				return json({ error: "InvalidRequest" }, 400);
+			}
 			const written = pds.records.some((r) => r.uri === uri);
 			if (viewer && written) lookups++;
 			const ingested = written && lookups > polls;
@@ -229,6 +232,19 @@ export function fakePds(notes: FakeNote[], { ingest = true } = {}) {
 
 	const client = new Client({
 		handler: async (pathname, init) => {
+			if (pathname.startsWith("/xrpc/com.atproto.repo.listRecords")) {
+				const params = new URL(pathname, "https://pds.test").searchParams;
+				const prefix = `at://${params.get("repo")}/${params.get("collection")}/`;
+				const from = Number(params.get("cursor") ?? 0);
+				const to = from + Number(params.get("limit"));
+				const listed = records.filter((r) => r.uri.startsWith(prefix));
+				return json({
+					records: listed
+						.slice(from, to)
+						.map((r) => ({ uri: r.uri, cid: "bafyfake", value: r.record })),
+					...(to < listed.length ? { cursor: String(to) } : {}),
+				});
+			}
 			if (pathname.startsWith("/xrpc/com.atproto.repo.getRecord")) {
 				const params = new URL(pathname, "https://pds.test").searchParams;
 				const uri = `at://${params.get("repo")}/${params.get("collection")}/${params.get("rkey")}`;

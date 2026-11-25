@@ -1,10 +1,13 @@
-import type { Client } from "@atcute/client";
+import type {} from "@atcute/atproto";
+import { type Client, ok } from "@atcute/client";
 import {
 	type Did,
 	isActorIdentifier,
 	isDid,
 	type ResourceUri,
 } from "@atcute/lexicons/syntax";
+import { parseAtUri } from "@lichen-wiki/client/at-uri";
+import { COLLECTIONS } from "@lichen-wiki/client/collections";
 import { getWiki, listWikis, searchWikis } from "./appview.ts";
 import { bareActor, resolveWiki } from "./identity.ts";
 
@@ -81,6 +84,47 @@ export async function wikiAt(
 		{ ...view, ownerHandle: isDid(actor) ? undefined : actor },
 		view.viewer?.role ?? null,
 	);
+}
+
+/** The public wikis `account` bookmarked, from the bookmarks on its PDS, which other apps share. */
+export async function bookmarkedWikis(
+	appview: Client,
+	pds: Client,
+	account: Did,
+): Promise<WikiChoice[]> {
+	const wikis = new Map<string, WikiChoice>();
+	let cursor: string | undefined;
+	do {
+		const page = await ok(
+			pds.get("com.atproto.repo.listRecords", {
+				params: {
+					repo: account,
+					collection: COLLECTIONS.bookmark,
+					limit: 100,
+					...(cursor ? { cursor } : {}),
+				},
+			}),
+		);
+		const subjects = new Set<ResourceUri>();
+		for (const { value } of page.records) {
+			const subject = value["subject"];
+			if (typeof subject !== "string" || wikis.has(subject)) continue;
+			if (parseAtUri(subject)?.collection !== COLLECTIONS.wiki) continue;
+			subjects.add(subject as ResourceUri);
+		}
+		// One page at a time, so a long bookmark list asks lichen.wiki at most a page's worth at once.
+		const found = await Promise.all(
+			[...subjects].map(
+				async (subject) =>
+					[subject, await getWiki(appview, subject, account)] as const,
+			),
+		);
+		for (const [subject, view] of found) {
+			if (view) wikis.set(subject, choice(view, view.viewer?.role ?? null));
+		}
+		cursor = page.cursor;
+	} while (cursor);
+	return [...wikis.values()];
 }
 
 export function matchWikis(

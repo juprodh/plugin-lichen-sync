@@ -1,10 +1,12 @@
 import type { ParseArgsOptionsConfig } from "node:util";
+import type { Client } from "@atcute/client";
 import type { Ask } from "./ask.ts";
 import type { Output } from "./output.ts";
 
 export interface Context {
 	readonly out: Output;
 	readonly ask: Ask | null;
+	readonly appview: Client;
 	readonly cwd: string;
 	readonly env: Readonly<Record<string, string | undefined>>;
 }

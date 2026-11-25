@@ -1,7 +1,10 @@
 import { parseArgs } from "node:util";
+import type { Client } from "@atcute/client";
+import { lichenAppview } from "@lichen-wiki/sync/appview";
 import { version } from "../package.json";
 import { type Ask, terminalAsk } from "./ask.ts";
 import type { Command, Context } from "./command.ts";
+import { list } from "./commands/list.ts";
 import { login } from "./commands/login.ts";
 import { logout } from "./commands/logout.ts";
 import { Output, type Writer, wantsColor } from "./output.ts";
@@ -14,9 +17,14 @@ export interface Terminal {
 	readonly cwd: string;
 	/** Tests answer questions themselves; null asks the terminal when someone can answer. */
 	readonly ask?: Ask | null;
+	readonly appview?: Client;
 }
 
-const COMMANDS: Readonly<Record<string, Command>> = { login, logout };
+const COMMANDS: Readonly<Record<string, Command>> = {
+	login,
+	logout,
+	list,
+};
 
 const SHARED = {
 	json: { type: "boolean" },
@@ -71,6 +79,7 @@ export async function run(
 				terminal.ask === undefined
 					? terminalAsk(terminal.env, values["no-input"] === true)
 					: terminal.ask,
+			appview: terminal.appview ?? lichenAppview(),
 			cwd: terminal.cwd,
 			env: terminal.env,
 		};
