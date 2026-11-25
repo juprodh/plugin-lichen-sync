@@ -7,7 +7,7 @@ import {
 	wikisOf,
 	yourWikis,
 } from "@lichen-wiki/sync/wiki-search";
-import { accountPds, requireAccount, savedAccount } from "../account.ts";
+import { requireAccount, savedAccount } from "../account.ts";
 import type { Command } from "../command.ts";
 import type { Output } from "../output.ts";
 
@@ -19,7 +19,7 @@ export const list: Command = {
 		all: { type: "boolean" },
 		bookmarks: { type: "boolean" },
 	},
-	async run({ out, env, appview }, { values, positionals }) {
+	async run({ out, env, appview, pds }, { values, positionals }) {
 		let wikis: WikiChoice[];
 		if (values["all"]) {
 			const account = await savedAccount(env);
@@ -27,11 +27,7 @@ export const list: Command = {
 			wikis = await findWikis(appview, positionals.join(" "), yours);
 		} else if (values["bookmarks"]) {
 			const account = await requireAccount(env);
-			wikis = await bookmarkedWikis(
-				appview,
-				await accountPds(account),
-				account.did,
-			);
+			wikis = await bookmarkedWikis(appview, await pds(account), account.did);
 		} else if (positionals[0]) {
 			const account = await savedAccount(env);
 			const yours = account ? await yourWikis(appview, account.did) : [];

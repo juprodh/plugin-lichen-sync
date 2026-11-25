@@ -27,6 +27,7 @@
 		"prepack": "bun run build"
 	},
 	"devDependencies": {
+		"@atcute/atproto": "^4.0.4",
 		"@atcute/client": "^5.1.2",
 		"@atcute/lexicons": "^2.1.1",
 		"@atcute/oauth-node-client": "^2.0.1",
