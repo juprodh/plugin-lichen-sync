@@ -16,32 +16,57 @@ export function describeSync(
 		counts.push(`${notes(pull.deleted.length)} removed`);
 	if (push) counts.push(`${notes(pushed)} sent`);
 	const lines = [`Lichen Sync: ${label}, ${counts.join(", ")}.`];
-	const add = (paths: readonly string[], text: string) => {
-		if (paths.length > 0) lines.push(`${text}: ${paths.join(", ")}`);
-	};
-	add(
-		pull.conflictCopies,
-		"Edited here and on lichen.wiki at once; your version is in",
-	);
-	add(pull.recoveredCopies, "Found without sync state; the earlier text is in");
-	add(
-		pull.deletedCopies,
-		"Deleted on lichen.wiki after an edit here; your version is in",
-	);
-	add(pull.gone, "No longer on lichen.wiki, left as is");
-	if (!push) return lines.join("\n");
-	add(
-		[...push.behind, ...push.lost],
-		"Changed on lichen.wiki meanwhile; sync again to merge and send",
-	);
-	add(push.pending, "Sent, not yet shown by lichen.wiki; the next sync checks");
-	add(push.taken, "A note of this wiki already has the title");
-	for (const { path, problem } of push.refused) {
+	for (const { text, paths } of needsAttention(pull, push)) {
+		lines.push(`${text}: ${paths.join(", ")}`);
+	}
+	for (const { path, problem } of push?.refused ?? []) {
 		lines.push(`${path}: ${describeProblem(problem, "en")}`);
 	}
-	add(push.missing, "Moved or deleted here, unchanged on lichen.wiki");
-	add(push.heldBack, "New, held back while a synced file is missing");
 	return lines.join("\n");
+}
+
+/** What a sync leaves for the user, apart from refused files, each worded with the paths it names. */
+export function needsAttention(
+	pull: PullReport,
+	push: PushReport | null,
+): { text: string; paths: readonly string[] }[] {
+	const found = [
+		{
+			text: "Edited here and on lichen.wiki at once; your version is in",
+			paths: pull.conflictCopies,
+		},
+		{
+			text: "Found without sync state; the earlier text is in",
+			paths: pull.recoveredCopies,
+		},
+		{
+			text: "Deleted on lichen.wiki after an edit here; your version is in",
+			paths: pull.deletedCopies,
+		},
+		{ text: "No longer on lichen.wiki, left as is", paths: pull.gone },
+	];
+	if (push) {
+		found.push(
+			{
+				text: "Changed on lichen.wiki meanwhile; sync again to merge and send",
+				paths: [...push.behind, ...push.lost],
+			},
+			{
+				text: "Sent, not yet shown by lichen.wiki; the next sync checks",
+				paths: push.pending,
+			},
+			{ text: "A note of this wiki already has the title", paths: push.taken },
+			{
+				text: "Moved or deleted here, unchanged on lichen.wiki",
+				paths: push.missing,
+			},
+			{
+				text: "New, held back while a synced file is missing",
+				paths: push.heldBack,
+			},
+		);
+	}
+	return found.filter(({ paths }) => paths.length > 0);
 }
 
 function notes(count: number): string {

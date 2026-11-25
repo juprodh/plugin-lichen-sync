@@ -70,10 +70,33 @@ export function fakeAppview(
 						noteCount: notes.length,
 						createdAt: STAMP,
 						updatedAt: STAMP,
-						viewer: {
-							did: param("viewer"),
-							canWrite: editors.includes(param("viewer")),
-						},
+						...(param("viewer")
+							? {
+									viewer: {
+										did: param("viewer"),
+										canWrite: editors.includes(param("viewer")),
+									},
+								}
+							: {}),
+					});
+				case "/xrpc/wiki.lichen.listWikis":
+					return json({
+						wikis: editors.includes(param("did"))
+							? [
+									{
+										uri: WIKI,
+										did: OWNER,
+										slug: "notes",
+										name: "Notes",
+										description: "",
+										language: "en",
+										noteCount: notes.length,
+										createdAt: STAMP,
+										updatedAt: STAMP,
+										role: "owner",
+									},
+								]
+							: [],
 					});
 				case "/xrpc/wiki.lichen.listNotes":
 					return json({

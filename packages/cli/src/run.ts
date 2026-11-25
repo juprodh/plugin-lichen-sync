@@ -9,6 +9,7 @@ import { list } from "./commands/list.ts";
 import { login } from "./commands/login.ts";
 import { logout } from "./commands/logout.ts";
 import { newWiki } from "./commands/new.ts";
+import { sync } from "./commands/sync.ts";
 import { Output, type Writer, wantsColor } from "./output.ts";
 
 export interface Terminal {
@@ -28,6 +29,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
 	logout,
 	list,
 	new: newWiki,
+	sync,
 };
 
 const SHARED = {

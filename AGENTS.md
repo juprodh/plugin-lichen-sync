@@ -9,7 +9,6 @@ nix develop path:.        # bun
 bun run lint:fix && bun run typecheck && bun run knip && bun test   # CI's checks (.tangled/workflows/ci.yml)
 bun run build             # main.js, minified
 bun run dev               # main.js, rebuilt on change
-bun scripts/pull.ts <owner> <wiki> <dir>   # pull a public wiki into a folder, as the plugin does into a vault
 
 nix develop path:.#obsidian -c scripts/obsidian.sh   # the plugin in a test Obsidian, headless
 bun scripts/devtools.ts eval|open|screenshot|logs    # drive that Obsidian
@@ -30,7 +29,7 @@ src/main.ts       the entry: default-exports the plugin class, as Obsidian requi
 src/host/         everything that touches Obsidian's API: the plugin class, the settings tab, the vault adapter
 src/core/         the plugin's own logic, platform-free: its settings and data.json, the profile lookup
 packages/sync/    @lichen-wiki/sync, private: the sync logic, platform-free, which the plugin bundles and the lichen CLI will
-scripts/          the sync driven from a terminal, with the filesystem as the vault
+scripts/          the test Obsidian and the tool that drives it
 tests/            mirrors src/core/, as packages/sync/tests/ mirrors packages/sync/src/
 ```
 

@@ -27,6 +27,6 @@ export async function writeJsonFile(
 	await rename(partial, path);
 }
 
-function isMissing(err: unknown): boolean {
+export function isMissing(err: unknown): boolean {
 	return (err as NodeJS.ErrnoException).code === "ENOENT";
 }
